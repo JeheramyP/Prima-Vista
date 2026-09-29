@@ -11,6 +11,14 @@ export type SlidePayload = {
   clear: boolean;
 };
 
+export type SongRecord = {
+  id: string;
+  title: string;
+  artist: string;
+  key?: string;
+  sections: unknown[];
+};
+
 contextBridge.exposeInMainWorld("primaVista", {
   openPresentation: () => ipcRenderer.invoke("presentation:open"),
   closePresentation: () => ipcRenderer.invoke("presentation:close"),
@@ -28,4 +36,7 @@ contextBridge.exposeInMainWorld("primaVista", {
     ipcRenderer.on("presentation:closed", listener);
     return () => ipcRenderer.removeListener("presentation:closed", listener);
   },
+  loadSongs: () => ipcRenderer.invoke("songs:load") as Promise<SongRecord[] | null>,
+  saveSongs: (songs: SongRecord[]) =>
+    ipcRenderer.invoke("songs:save", songs) as Promise<boolean>,
 });

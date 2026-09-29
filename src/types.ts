@@ -50,6 +50,8 @@ export type PrimaVistaAPI = {
   getSlide: () => Promise<SlidePayload>;
   onSlideUpdate: (callback: (payload: SlidePayload) => void) => () => void;
   onPresentationClosed: (callback: () => void) => () => void;
+  loadSongs: () => Promise<Song[] | null>;
+  saveSongs: (songs: Song[]) => Promise<boolean>;
 };
 
 declare global {

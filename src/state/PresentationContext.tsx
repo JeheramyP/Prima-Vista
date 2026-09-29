@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { parseEditorText, sectionsToSlides, songToEditorText, songToSlides } from "../lib/slides";
-import { getSongById, saveSong, searchSongs, SONG_LIBRARY } from "../lib/songs";
+import { getSongById, loadLibrary, saveSong, searchSongs, SONG_LIBRARY } from "../lib/songs";
 import type { Slide, SlidePayload, Song } from "../types";
 
 type PresentationState = {
@@ -56,8 +56,28 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [clear, setClear] = useState(false);
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [libraryVersion, setLibraryVersion] = useState(0);
+  const [libraryReady, setLibraryReady] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const songs = await loadLibrary();
+      if (cancelled) return;
+      const first = songs[0] ?? null;
+      setActiveSong(first);
+      setEditorText(first ? songToEditorText(first) : "");
+      setSlides(first ? songToSlides(first) : []);
+      setCurrentIndex(0);
+      setLibraryReady(true);
+      setLibraryVersion((version) => version + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!libraryReady) return;
     let cancelled = false;
     setSearching(true);
     const handle = window.setTimeout(async () => {
@@ -71,7 +91,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [query, libraryVersion]);
+  }, [query, libraryVersion, libraryReady]);
 
   const currentSlide = slides[currentIndex];
 

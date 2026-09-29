@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, screen } from "electron";
+import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
@@ -14,7 +15,7 @@ process.env.VITE_PUBLIC = isDev
   : process.env.DIST;
 
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
-const preloadPath = path.join(__dirname, "preload.mjs");
+const preloadPath = path.join(__dirname, "preload.js");
 
 let controllerWindow: BrowserWindow | null = null;
 let presentationWindow: BrowserWindow | null = null;
@@ -30,6 +31,14 @@ type SlidePayload = {
   clear: boolean;
 };
 
+type SongRecord = {
+  id: string;
+  title: string;
+  artist: string;
+  key?: string;
+  sections: unknown[];
+};
+
 let lastSlide: SlidePayload = {
   songTitle: "",
   artist: "",
@@ -40,6 +49,38 @@ let lastSlide: SlidePayload = {
   blackout: true,
   clear: false,
 };
+
+function libraryPath() {
+  return path.join(app.getPath("userData"), "song-library.json");
+}
+
+async function readLibraryFile(): Promise<SongRecord[] | null> {
+  try {
+    const raw = await fs.readFile(libraryPath(), "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter(
+      (song): song is SongRecord =>
+        !!song &&
+        typeof song === "object" &&
+        typeof (song as SongRecord).id === "string" &&
+        typeof (song as SongRecord).title === "string" &&
+        typeof (song as SongRecord).artist === "string" &&
+        Array.isArray((song as SongRecord).sections),
+    );
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return null;
+    console.error("Failed to read song library:", error);
+    return null;
+  }
+}
+
+async function writeLibraryFile(songs: SongRecord[]) {
+  const file = libraryPath();
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(songs, null, 2), "utf8");
+}
 
 function rendererUrl(hash = "") {
   if (VITE_DEV_SERVER_URL) {
@@ -158,6 +199,16 @@ app.whenReady().then(() => {
     if (presentationWindow && !presentationWindow.isDestroyed()) {
       presentationWindow.webContents.send("slide:update", payload);
     }
+  });
+
+  ipcMain.handle("songs:load", async () => {
+    return readLibraryFile();
+  });
+
+  ipcMain.handle("songs:save", async (_event, songs: SongRecord[]) => {
+    if (!Array.isArray(songs)) return false;
+    await writeLibraryFile(songs);
+    return true;
   });
 
   app.on("activate", () => {

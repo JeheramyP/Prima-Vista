@@ -9,7 +9,7 @@ function section(
   return { id, kind, label, lines };
 }
 
-export const SONG_LIBRARY: Song[] = [
+export const SONG_LIBRARY: Song[] = structuredClone([
   {
     id: "amazing-grace",
     title: "Amazing Grace",
@@ -267,7 +267,60 @@ export const SONG_LIBRARY: Song[] = [
       ]),
     ],
   },
-];
+]);
+
+const STORAGE_KEY = "prima-vista-song-library";
+
+function replaceLibrary(songs: Song[]) {
+  SONG_LIBRARY.splice(0, SONG_LIBRARY.length, ...songs);
+}
+
+function isSong(value: unknown): value is Song {
+  if (!value || typeof value !== "object") return false;
+  const song = value as Song;
+  return (
+    typeof song.id === "string" &&
+    typeof song.title === "string" &&
+    typeof song.artist === "string" &&
+    Array.isArray(song.sections)
+  );
+}
+
+async function readPersistedLibrary(): Promise<Song[] | null> {
+  if (window.primaVista?.loadSongs) {
+    const songs = await window.primaVista.loadSongs();
+    if (songs && songs.every(isSong)) return songs;
+    return null;
+  }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed) && parsed.every(isSong)) return parsed;
+  } catch {
+    // Ignore corrupt browser storage and fall back to defaults.
+  }
+  return null;
+}
+
+async function writePersistedLibrary(songs: Song[]) {
+  if (window.primaVista?.saveSongs) {
+    await window.primaVista.saveSongs(songs);
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
+}
+
+export async function loadLibrary(): Promise<Song[]> {
+  const stored = await readPersistedLibrary();
+  if (stored?.length) {
+    replaceLibrary(stored);
+  } else {
+    await writePersistedLibrary([...SONG_LIBRARY]);
+  }
+  return [...SONG_LIBRARY];
+}
 
 function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -298,6 +351,7 @@ export async function saveSong(song: Song): Promise<Song> {
   } else {
     SONG_LIBRARY[index] = song;
   }
+  await writePersistedLibrary([...SONG_LIBRARY]);
   return song;
 }
 
