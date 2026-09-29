@@ -28,6 +28,6 @@ The controller opens first. Use **Open output** to spawn the presentation window
 | C | Clear (blank lyrics, keep background) |
 | Click a slide tile | Jump to that slide |
 
-Lyric editor headings use `[Verse 1]`, `[Chorus]`, and `[Bridge]`. Each pair of lines becomes one slide. **Rebuild slides** applies edits immediately.
+The editor builds a song from sections. Drag **Verse**, **Chorus**, **Bridge**, **Instrumental**, or **Tag** into the arrangement, reorder them by the handle, and type lyrics on each card. **Update slides** applies the arrangement. Each pair of lines becomes one slide.
 
 Songs currently load from a mock library in `src/lib/songs.ts`. Swap `searchSongs` for a remote lyrics API when you are ready.

@@ -6,9 +6,11 @@ import {
   useEffect,
   useMemo,
   useState,
+  type Dispatch,
   type ReactNode,
+  type SetStateAction,
 } from "react";
-import { parseEditorText, sectionsToSlides, songToEditorText, songToSlides } from "../lib/slides";
+import { draftToSong, EMPTY_DRAFT, sectionsToSlides, songToDraft, songToSlides } from "../lib/slides";
 import {
   deleteSong as deleteSongFromLibrary,
   getSongById,
@@ -18,7 +20,7 @@ import {
   SONG_LIBRARY,
 } from "../lib/songs";
 import { createEntry, loadSetlist, saveSetlist } from "../lib/setlist";
-import type { SetlistEntry, Slide, SlidePayload, Song } from "../types";
+import type { SetlistEntry, Slide, SlidePayload, Song, SongDraft } from "../types";
 
 type SlidePosition = "first" | "last";
 
@@ -31,7 +33,7 @@ type PresentationState = {
   results: Song[];
   searching: boolean;
   activeSong: Song | null;
-  editorText: string;
+  draft: SongDraft;
   slides: Slide[];
   currentIndex: number;
   blackout: boolean;
@@ -49,7 +51,7 @@ type PresentationState = {
   selectSong: (song: Song) => Promise<void>;
   createNewSong: () => void;
   deleteSong: (id: string) => Promise<void>;
-  setEditorText: (value: string) => void;
+  setDraft: Dispatch<SetStateAction<SongDraft>>;
   applyEditor: () => Promise<void>;
   goTo: (index: number) => void;
   next: () => void;
@@ -68,8 +70,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [results, setResults] = useState<Song[]>(SONG_LIBRARY);
   const [searching, setSearching] = useState(false);
   const [activeSong, setActiveSong] = useState<Song | null>(SONG_LIBRARY[0] ?? null);
-  const [editorText, setEditorText] = useState(
-    SONG_LIBRARY[0] ? songToEditorText(SONG_LIBRARY[0]) : "",
+  const [draft, setDraft] = useState<SongDraft>(
+    SONG_LIBRARY[0] ? songToDraft(SONG_LIBRARY[0]) : EMPTY_DRAFT,
   );
   const [slides, setSlides] = useState<Slide[]>(
     SONG_LIBRARY[0] ? songToSlides(SONG_LIBRARY[0]) : [],
@@ -115,7 +117,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       if (cancelled) return;
       const first = songs[0] ?? null;
       setActiveSong(first);
-      setEditorText(first ? songToEditorText(first) : "");
+      setDraft(first ? songToDraft(first) : EMPTY_DRAFT);
       setSlides(first ? songToSlides(first) : []);
       setCurrentIndex(0);
       setLibraryReady(true);
@@ -172,7 +174,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const showSong = useCallback((song: Song, position: SlidePosition = "first") => {
     const songSlides = songToSlides(song);
     setActiveSong(song);
-    setEditorText(songToEditorText(song));
+    setDraft(songToDraft(song));
     setSlides(songSlides);
     setCurrentIndex(position === "last" ? Math.max(0, songSlides.length - 1) : 0);
     setClear(false);
@@ -248,11 +250,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       id: `custom-${Date.now()}`,
       title: "Untitled",
       artist: "",
-      sections: [{ id: "new-1", kind: "verse", label: "Verse 1", lines: [] }],
+      sections: [],
     };
     setActiveEntryId(null);
     setActiveSong(blank);
-    setEditorText(songToEditorText(blank));
+    setDraft(songToDraft(blank));
     setSlides(songToSlides(blank));
     setCurrentIndex(0);
     setClear(false);
@@ -267,7 +269,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
         setActiveEntryId(null);
         const fallback = SONG_LIBRARY[0] ?? null;
         setActiveSong(fallback);
-        setEditorText(fallback ? songToEditorText(fallback) : "");
+        setDraft(fallback ? songToDraft(fallback) : EMPTY_DRAFT);
         setSlides(fallback ? songToSlides(fallback) : []);
         setCurrentIndex(0);
         setClear(false);
@@ -279,20 +281,14 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   );
 
   const applyEditor = useCallback(async () => {
-    const parsed = parseEditorText(editorText);
-    const nextSong: Song = {
-      id: activeSong?.id ?? `custom-${Date.now()}`,
-      title: parsed.title,
-      artist: parsed.artist,
-      key: parsed.key,
-      sections: parsed.sections,
-    };
+    const nextSong = draftToSong(activeSong?.id ?? `custom-${Date.now()}`, draft);
     setActiveSong(nextSong);
-    setSlides(sectionsToSlides(parsed.sections));
+    setDraft(songToDraft(nextSong));
+    setSlides(sectionsToSlides(nextSong.sections));
     setCurrentIndex(0);
     await saveSong(nextSong);
     setLibraryVersion((version) => version + 1);
-  }, [activeSong?.id, editorText]);
+  }, [activeSong?.id, draft]);
 
   const goTo = useCallback(
     (index: number) => {
@@ -358,7 +354,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       results,
       searching,
       activeSong,
-      editorText,
+      draft,
       slides,
       currentIndex,
       blackout,
@@ -376,7 +372,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       selectSong,
       createNewSong,
       deleteSong,
-      setEditorText,
+      setDraft,
       applyEditor,
       goTo,
       next,
@@ -392,7 +388,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       results,
       searching,
       activeSong,
-      editorText,
+      draft,
       slides,
       currentIndex,
       blackout,

@@ -4,6 +4,7 @@ export type SectionKind =
   | "bridge"
   | "prechorus"
   | "tag"
+  | "instrumental"
   | "intro"
   | "ending"
   | "other";
@@ -20,6 +21,13 @@ export type Song = {
   title: string;
   artist: string;
   key?: string;
+  sections: LyricSection[];
+};
+
+export type SongDraft = {
+  title: string;
+  artist: string;
+  key: string;
   sections: LyricSection[];
 };
 

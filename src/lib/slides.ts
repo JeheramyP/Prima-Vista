@@ -1,97 +1,36 @@
-import type { LyricSection, SectionKind, Slide, Song } from "../types";
+import type { LyricSection, SectionKind, Slide, Song, SongDraft } from "../types";
 
 const LINES_PER_SLIDE = 2;
 
-const KIND_FROM_LABEL: Record<string, SectionKind> = {
-  verse: "verse",
-  chorus: "chorus",
-  bridge: "bridge",
-  prechorus: "prechorus",
-  "pre-chorus": "prechorus",
-  tag: "tag",
-  intro: "intro",
-  ending: "ending",
-  outro: "ending",
+export const SECTION_KIND_DRAG_TYPE = "application/x-prima-vista-section-kind";
+export const SECTION_ID_DRAG_TYPE = "application/x-prima-vista-section";
+
+export const SECTION_PALETTE: { kind: SectionKind; name: string }[] = [
+  { kind: "verse", name: "Verse" },
+  { kind: "chorus", name: "Chorus" },
+  { kind: "bridge", name: "Bridge" },
+  { kind: "instrumental", name: "Instrumental" },
+  { kind: "tag", name: "Tag" },
+];
+
+const KIND_NAME: Record<SectionKind, string> = {
+  verse: "Verse",
+  chorus: "Chorus",
+  bridge: "Bridge",
+  prechorus: "Pre-Chorus",
+  tag: "Tag",
+  instrumental: "Instrumental",
+  intro: "Intro",
+  ending: "Ending",
+  other: "Section",
 };
 
-export function songToEditorText(song: Song): string {
-  const header = `Title: ${song.title}\nArtist: ${song.artist}${song.key ? `\nKey: ${song.key}` : ""}\n`;
-  const body = song.sections
-    .map((section) => `[${section.label}]\n${section.lines.join("\n")}`)
-    .join("\n\n");
-  return `${header}\n${body}\n`;
-}
-
-export function parseEditorText(raw: string): {
-  title: string;
-  artist: string;
-  key?: string;
-  sections: LyricSection[];
-} {
-  const lines = raw.replace(/\r\n/g, "\n").split("\n");
-  let title = "Untitled";
-  let artist = "";
-  let key: string | undefined;
-  const sections: LyricSection[] = [];
-  let current: LyricSection | null = null;
-  let unnamed = 0;
-
-  const flush = () => {
-    if (current) {
-      sections.push(current);
-    }
-    current = null;
-  };
-
-  for (const original of lines) {
-    const line = original.trim();
-    if (!line) continue;
-
-    const titleMatch = line.match(/^title\s*:\s*(.*)$/i);
-    if (titleMatch) {
-      title = titleMatch[1].trim() || "Untitled";
-      continue;
-    }
-    const artistMatch = line.match(/^artist\s*:\s*(.*)$/i);
-    if (artistMatch) {
-      artist = artistMatch[1].trim();
-      continue;
-    }
-    const keyMatch = line.match(/^key\s*:\s*(.*)$/i);
-    if (keyMatch) {
-      key = keyMatch[1].trim() || undefined;
-      continue;
-    }
-
-    const heading = line.match(/^\[(.+)\]$/);
-    if (heading) {
-      flush();
-      const label = heading[1].trim();
-      const kind = inferKind(label);
-      current = {
-        id: `edit-${sections.length + 1}`,
-        kind,
-        label,
-        lines: [],
-      };
-      continue;
-    }
-
-    if (!current) {
-      unnamed += 1;
-      current = {
-        id: `edit-open-${unnamed}`,
-        kind: "other",
-        label: `Section ${unnamed}`,
-        lines: [],
-      };
-    }
-    current.lines.push(line);
-  }
-
-  flush();
-  return { title, artist, key, sections };
-}
+export const EMPTY_DRAFT: SongDraft = {
+  title: "Untitled",
+  artist: "",
+  key: "",
+  sections: [],
+};
 
 export function sectionsToSlides(sections: LyricSection[]): Slide[] {
   const slides: Slide[] = [];
@@ -112,11 +51,6 @@ export function sectionsToSlides(sections: LyricSection[]): Slide[] {
 
 export function songToSlides(song: Song): Slide[] {
   return sectionsToSlides(song.sections);
-}
-
-function inferKind(label: string): SectionKind {
-  const key = label.toLowerCase().replace(/\s+\d+$/, "").trim();
-  return KIND_FROM_LABEL[key] ?? (key.includes("verse") ? "verse" : "other");
 }
 
 function chunkLines(lines: string[], size: number): string[][] {
@@ -141,7 +75,108 @@ export function kindTone(kind: SectionKind): string {
       return "bg-rose-500/20 text-rose-200 border-rose-400/30";
     case "intro":
       return "bg-emerald-500/20 text-emerald-200 border-emerald-400/30";
+    case "instrumental":
+      return "bg-cyan-500/20 text-cyan-200 border-cyan-400/30";
     default:
       return "bg-white/10 text-stone-200 border-white/10";
   }
+}
+
+export function isPaletteKind(value: string): value is SectionKind {
+  return SECTION_PALETTE.some((item) => item.kind === value);
+}
+
+export function displayLabel(kind: SectionKind, index: number, total: number): string {
+  const name = KIND_NAME[kind];
+  if (kind === "verse" || kind === "other" || total > 1) return `${name} ${index + 1}`;
+  return name;
+}
+
+export function withSectionLabels(sections: LyricSection[]): LyricSection[] {
+  const totals = new Map<SectionKind, number>();
+  for (const section of sections) {
+    totals.set(section.kind, (totals.get(section.kind) ?? 0) + 1);
+  }
+  const seen = new Map<SectionKind, number>();
+  return sections.map((section) => {
+    const index = seen.get(section.kind) ?? 0;
+    seen.set(section.kind, index + 1);
+    return {
+      ...section,
+      label: displayLabel(section.kind, index, totals.get(section.kind) ?? 1),
+    };
+  });
+}
+
+export function cleanSectionLines(sections: LyricSection[]): LyricSection[] {
+  return sections.map((section) => ({
+    ...section,
+    lines: section.lines.map((line) => line.trim()).filter((line) => line.length > 0),
+  }));
+}
+
+export function songToDraft(song: Song): SongDraft {
+  return {
+    title: song.title,
+    artist: song.artist,
+    key: song.key ?? "",
+    sections: song.sections.map((section) => ({
+      ...section,
+      lines: [...section.lines],
+    })),
+  };
+}
+
+export function draftToSong(id: string, draft: SongDraft): Song {
+  const key = draft.key.trim();
+  return {
+    id,
+    title: draft.title.trim() || "Untitled",
+    artist: draft.artist.trim(),
+    key: key || undefined,
+    sections: cleanSectionLines(withSectionLabels(draft.sections)),
+  };
+}
+
+export function createSection(kind: SectionKind): LyricSection {
+  return {
+    id: `sec-${crypto.randomUUID()}`,
+    kind,
+    label: displayLabel(kind, 0, 1),
+    lines: [],
+  };
+}
+
+export function insertSection(sections: LyricSection[], index: number, section: LyricSection) {
+  const next = [...sections];
+  next.splice(Math.max(0, Math.min(sections.length, index)), 0, section);
+  return next;
+}
+
+export function moveSections(sections: LyricSection[], from: number, toIndex: number) {
+  if (from < 0) return sections;
+  const target = Math.max(0, Math.min(sections.length, toIndex));
+  const adjusted = from < target ? target - 1 : target;
+  if (adjusted === from) return sections;
+  const next = [...sections];
+  const [moved] = next.splice(from, 1);
+  next.splice(adjusted, 0, moved);
+  return next;
+}
+
+export function duplicateSection(sections: LyricSection[], id: string) {
+  const index = sections.findIndex((section) => section.id === id);
+  if (index === -1) return sections;
+  const source = sections[index];
+  const copy: LyricSection = {
+    ...createSection(source.kind),
+    lines: [...source.lines],
+  };
+  return insertSection(sections, index + 1, copy);
+}
+
+export function slideCount(lines: string[]) {
+  const filled = lines.filter((line) => line.trim()).length;
+  if (!filled) return 1;
+  return Math.ceil(filled / LINES_PER_SLIDE);
 }

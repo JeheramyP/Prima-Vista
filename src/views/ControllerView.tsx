@@ -25,6 +25,12 @@ export default function ControllerView() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "enter") {
+        event.preventDefault();
+        void applyEditor();
+        return;
+      }
+
       const typing =
         target &&
         (target.tagName === "INPUT" ||
@@ -32,12 +38,6 @@ export default function ControllerView() {
           target.isContentEditable);
       if (typing) return;
       if (target?.tagName === "BUTTON" && (event.code === "Space" || event.key === "Enter")) {
-        return;
-      }
-
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "enter") {
-        event.preventDefault();
-        void applyEditor();
         return;
       }
 
@@ -96,7 +96,7 @@ export default function ControllerView() {
               Space / arrows change slides · B blackout · C clear
             </p>
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1 overflow-auto">
             {tab === "overview" ? <SlideGrid /> : <LyricEditor />}
           </div>
         </main>
