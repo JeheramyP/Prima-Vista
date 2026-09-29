@@ -10,8 +10,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "electron . --no-sandbox",
-    "start:built": "npm run build && electron . --no-sandbox",
+    "start": "node scripts/start-electron.mjs",
+    "start:built": "npm run build && node scripts/start-electron.mjs",
     "dist": "npm run build && electron-builder",
     "dist:dir": "npm run build && electron-builder --dir"
   },

@@ -314,7 +314,7 @@ async function writePersistedLibrary(songs: Song[]) {
 
 export async function loadLibrary(): Promise<Song[]> {
   const stored = await readPersistedLibrary();
-  if (stored?.length) {
+  if (stored) {
     replaceLibrary(stored);
   } else {
     await writePersistedLibrary([...SONG_LIBRARY]);
@@ -353,6 +353,14 @@ export async function saveSong(song: Song): Promise<Song> {
   }
   await writePersistedLibrary([...SONG_LIBRARY]);
   return song;
+}
+
+export async function deleteSong(id: string): Promise<boolean> {
+  const index = SONG_LIBRARY.findIndex((existing) => existing.id === id);
+  if (index === -1) return false;
+  SONG_LIBRARY.splice(index, 1);
+  await writePersistedLibrary([...SONG_LIBRARY]);
+  return true;
 }
 
 function wait(ms: number) {

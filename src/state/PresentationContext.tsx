@@ -9,8 +9,22 @@ import {
   type ReactNode,
 } from "react";
 import { parseEditorText, sectionsToSlides, songToEditorText, songToSlides } from "../lib/slides";
-import { getSongById, loadLibrary, saveSong, searchSongs, SONG_LIBRARY } from "../lib/songs";
-import type { Slide, SlidePayload, Song } from "../types";
+import {
+  deleteSong as deleteSongFromLibrary,
+  getSongById,
+  loadLibrary,
+  saveSong,
+  searchSongs,
+  SONG_LIBRARY,
+} from "../lib/songs";
+import { createEntry, loadSetlist, saveSetlist } from "../lib/setlist";
+import type { SetlistEntry, Slide, SlidePayload, Song } from "../types";
+
+type SlidePosition = "first" | "last";
+
+export type SetlistItem = { entry: SetlistEntry; song: Song };
+
+export type UpcomingSlide = { slide: Slide; songTitle?: string };
 
 type PresentationState = {
   query: string;
@@ -23,9 +37,18 @@ type PresentationState = {
   blackout: boolean;
   clear: boolean;
   presentationOpen: boolean;
+  setlist: SetlistItem[];
+  activeEntryId: string | null;
+  upcoming: UpcomingSlide | null;
+  addToSetlist: (songId: string, index?: number) => void;
+  removeFromSetlist: (entryId: string) => void;
+  moveSetlistEntry: (entryId: string, toIndex: number) => void;
+  clearSetlist: () => void;
+  selectSetlistEntry: (entryId: string, position?: SlidePosition) => void;
   setQuery: (value: string) => void;
   selectSong: (song: Song) => Promise<void>;
   createNewSong: () => void;
+  deleteSong: (id: string) => Promise<void>;
   setEditorText: (value: string) => void;
   applyEditor: () => Promise<void>;
   goTo: (index: number) => void;
@@ -57,6 +80,33 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [presentationOpen, setPresentationOpen] = useState(false);
   const [libraryVersion, setLibraryVersion] = useState(0);
   const [libraryReady, setLibraryReady] = useState(false);
+  const [setlistEntries, setSetlistEntries] = useState<SetlistEntry[]>(loadSetlist);
+  const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    saveSetlist(setlistEntries);
+  }, [setlistEntries]);
+
+  useEffect(() => {
+    if (!libraryReady) return;
+    const known = new Set(SONG_LIBRARY.map((song) => song.id));
+    setSetlistEntries((entries) => {
+      const kept = entries.filter((entry) => known.has(entry.songId));
+      return kept.length === entries.length ? entries : kept;
+    });
+  }, [libraryReady, libraryVersion]);
+
+  const setlist = useMemo<SetlistItem[]>(() => {
+    const items: SetlistItem[] = [];
+    for (const entry of setlistEntries) {
+      const song = SONG_LIBRARY.find((candidate) => candidate.id === entry.songId);
+      if (song) items.push({ entry, song });
+    }
+    return items;
+    // SONG_LIBRARY is mutated in place; libraryVersion signals those changes.
+  }, [setlistEntries, libraryVersion]);
+
+  const activeSetlistIndex = setlist.findIndex((item) => item.entry.id === activeEntryId);
 
   useEffect(() => {
     let cancelled = false;
@@ -119,15 +169,79 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const selectSong = useCallback(async (song: Song) => {
-    const full = (await getSongById(song.id)) ?? song;
-    setActiveSong(full);
-    setEditorText(songToEditorText(full));
-    setSlides(songToSlides(full));
-    setCurrentIndex(0);
+  const showSong = useCallback((song: Song, position: SlidePosition = "first") => {
+    const songSlides = songToSlides(song);
+    setActiveSong(song);
+    setEditorText(songToEditorText(song));
+    setSlides(songSlides);
+    setCurrentIndex(position === "last" ? Math.max(0, songSlides.length - 1) : 0);
     setClear(false);
     setBlackout(false);
   }, []);
+
+  const selectSong = useCallback(
+    async (song: Song) => {
+      const full = (await getSongById(song.id)) ?? song;
+      setActiveEntryId(null);
+      showSong(full);
+    },
+    [showSong],
+  );
+
+  const selectSetlistEntry = useCallback(
+    (entryId: string, position: SlidePosition = "first") => {
+      const item = setlist.find((candidate) => candidate.entry.id === entryId);
+      if (!item) return;
+      setActiveEntryId(entryId);
+      showSong(item.song, position);
+    },
+    [setlist, showSong],
+  );
+
+  const addToSetlist = useCallback((songId: string, index?: number) => {
+    setSetlistEntries((entries) => {
+      const nextEntries = [...entries];
+      const at = index === undefined ? entries.length : Math.max(0, Math.min(entries.length, index));
+      nextEntries.splice(at, 0, createEntry(songId));
+      return nextEntries;
+    });
+  }, []);
+
+  const removeFromSetlist = useCallback((entryId: string) => {
+    setSetlistEntries((entries) => entries.filter((entry) => entry.id !== entryId));
+    setActiveEntryId((current) => (current === entryId ? null : current));
+  }, []);
+
+  const moveSetlistEntry = useCallback((entryId: string, toIndex: number) => {
+    setSetlistEntries((entries) => {
+      const from = entries.findIndex((entry) => entry.id === entryId);
+      if (from === -1) return entries;
+      // toIndex is an insertion point measured before the entry is removed.
+      const target = Math.max(0, Math.min(entries.length, toIndex));
+      const adjusted = from < target ? target - 1 : target;
+      if (adjusted === from) return entries;
+      const nextEntries = [...entries];
+      const [moved] = nextEntries.splice(from, 1);
+      nextEntries.splice(adjusted, 0, moved);
+      return nextEntries;
+    });
+  }, []);
+
+  const clearSetlist = useCallback(() => {
+    setSetlistEntries([]);
+    setActiveEntryId(null);
+  }, []);
+
+  const nextSetlistItem = activeSetlistIndex === -1 ? undefined : setlist[activeSetlistIndex + 1];
+  const prevSetlistItem = activeSetlistIndex > 0 ? setlist[activeSetlistIndex - 1] : undefined;
+
+  const upcoming = useMemo<UpcomingSlide | null>(() => {
+    const inSong = slides[currentIndex + 1];
+    if (inSong) return { slide: inSong };
+    if (!nextSetlistItem) return null;
+    const first = songToSlides(nextSetlistItem.song)[0];
+    return first ? { slide: first, songTitle: nextSetlistItem.song.title } : null;
+  }, [slides, currentIndex, nextSetlistItem]);
 
   const createNewSong = useCallback(() => {
     const blank: Song = {
@@ -136,6 +250,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       artist: "",
       sections: [{ id: "new-1", kind: "verse", label: "Verse 1", lines: [] }],
     };
+    setActiveEntryId(null);
     setActiveSong(blank);
     setEditorText(songToEditorText(blank));
     setSlides(songToSlides(blank));
@@ -143,6 +258,25 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     setClear(false);
     setBlackout(false);
   }, []);
+
+  const deleteSong = useCallback(
+    async (id: string) => {
+      await deleteSongFromLibrary(id);
+      setSetlistEntries((entries) => entries.filter((entry) => entry.songId !== id));
+      if (activeSong?.id === id) {
+        setActiveEntryId(null);
+        const fallback = SONG_LIBRARY[0] ?? null;
+        setActiveSong(fallback);
+        setEditorText(fallback ? songToEditorText(fallback) : "");
+        setSlides(fallback ? songToSlides(fallback) : []);
+        setCurrentIndex(0);
+        setClear(false);
+        setBlackout(false);
+      }
+      setLibraryVersion((version) => version + 1);
+    },
+    [activeSong?.id],
+  );
 
   const applyEditor = useCallback(async () => {
     const parsed = parseEditorText(editorText);
@@ -180,8 +314,12 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setClear(false);
       return;
     }
+    if (currentIndex >= slides.length - 1 && nextSetlistItem) {
+      selectSetlistEntry(nextSetlistItem.entry.id, "first");
+      return;
+    }
     goTo(currentIndex + 1);
-  }, [blackout, clear, currentIndex, goTo]);
+  }, [blackout, clear, currentIndex, goTo, nextSetlistItem, selectSetlistEntry, slides.length]);
 
   const prev = useCallback(() => {
     if (blackout) {
@@ -192,8 +330,12 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setClear(false);
       return;
     }
+    if (currentIndex <= 0 && prevSetlistItem) {
+      selectSetlistEntry(prevSetlistItem.entry.id, "last");
+      return;
+    }
     goTo(currentIndex - 1);
-  }, [blackout, clear, currentIndex, goTo]);
+  }, [blackout, clear, currentIndex, goTo, prevSetlistItem, selectSetlistEntry]);
 
   const openPresentation = useCallback(async () => {
     await window.primaVista?.openPresentation();
@@ -222,9 +364,18 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       blackout,
       clear,
       presentationOpen,
+      setlist,
+      activeEntryId,
+      upcoming,
+      addToSetlist,
+      removeFromSetlist,
+      moveSetlistEntry,
+      clearSetlist,
+      selectSetlistEntry,
       setQuery,
       selectSong,
       createNewSong,
+      deleteSong,
       setEditorText,
       applyEditor,
       goTo,
@@ -247,8 +398,17 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       blackout,
       clear,
       presentationOpen,
+      setlist,
+      activeEntryId,
+      upcoming,
+      addToSetlist,
+      removeFromSetlist,
+      moveSetlistEntry,
+      clearSetlist,
+      selectSetlistEntry,
       selectSong,
       createNewSong,
+      deleteSong,
       applyEditor,
       goTo,
       next,

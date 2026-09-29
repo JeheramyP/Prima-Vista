@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import DualPreview from "../components/DualPreview";
 import LyricEditor from "../components/LyricEditor";
 import SearchBar from "../components/SearchBar";
+import SetlistPanel from "../components/SetlistPanel";
 import SlideGrid from "../components/SlideGrid";
 import SongList from "../components/SongList";
 import Toolbar from "../components/Toolbar";
@@ -72,7 +73,10 @@ export default function ControllerView() {
   return (
     <div className="flex h-full flex-col bg-sanctuary-950 text-stone-100">
       <Toolbar />
-      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[240px_280px_minmax(0,1fr)]">
+        <aside className="flex min-h-0 flex-col border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
+          <SetlistPanel />
+        </aside>
         <aside className="flex min-h-0 flex-col border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
           <SearchBar />
           <div className="mt-4 flex min-h-0 flex-1 flex-col">

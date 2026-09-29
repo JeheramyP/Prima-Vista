@@ -31,6 +31,11 @@ export type Slide = {
   lines: string[];
 };
 
+export type SetlistEntry = {
+  id: string;
+  songId: string;
+};
+
 export type SlidePayload = {
   songTitle: string;
   artist: string;

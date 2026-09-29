@@ -8,6 +8,10 @@ import { dirname } from "node:path";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Editors built on Electron (Cursor, VS Code) export this into their terminals; if the
+// spawned Electron inherits it, it runs as plain Node and `electron.app` is undefined.
+delete process.env.ELECTRON_RUN_AS_NODE;
+
 export default defineConfig({
   resolve: {
     alias: {

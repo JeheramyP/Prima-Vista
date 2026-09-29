@@ -1,5 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { SlidePayload } from "../types";
+
+/** Target font size as a fraction of the lyric area width (scales with window resize). */
+const FONT_WIDTH_RATIO = 0.058;
+const MIN_FONT_PX = 28;
+const MAX_FONT_PX = 120;
+
+function fontSizeForWidth(contentWidth: number) {
+  if (contentWidth <= 0) return MIN_FONT_PX;
+  return Math.min(MAX_FONT_PX, Math.max(MIN_FONT_PX, contentWidth * FONT_WIDTH_RATIO));
+}
 
 const EMPTY: SlidePayload = {
   songTitle: "",
@@ -14,6 +24,8 @@ const EMPTY: SlidePayload = {
 
 export default function PresentationView() {
   const [slide, setSlide] = useState<SlidePayload>(EMPTY);
+  const [fontSizePx, setFontSizePx] = useState(MIN_FONT_PX);
+  const stageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +56,20 @@ export default function PresentationView() {
     };
   }, []);
 
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const sync = () => {
+      setFontSizePx(fontSizeForWidth(stage.clientWidth));
+    };
+
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(stage);
+    return () => observer.disconnect();
+  }, [slide.blackout]);
+
   const hidden = slide.blackout || slide.clear || !slide.lines.length;
 
   return (
@@ -52,15 +78,24 @@ export default function PresentationView() {
       {slide.blackout ? (
         <div className="h-full w-full bg-black" />
       ) : (
-        <div className="flex h-full flex-col items-center justify-center px-[8vw] py-[10vh]">
+        <div
+          ref={stageRef}
+          className="flex h-full w-full flex-col items-center justify-center px-[max(1.25rem,3vw)] py-[10vh]"
+        >
           <div
-            className={`w-full max-w-[56rem] text-center transition-opacity duration-200 ${
+            className={`w-full min-w-0 text-center transition-opacity duration-200 ${
               hidden ? "opacity-0" : "opacity-100"
             }`}
           >
-            <p className="font-display text-[clamp(2rem,4.8vw,5.6rem)] font-medium leading-[1.22] tracking-wide drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)]">
+            <p
+              className="mx-auto w-full max-w-full font-display font-medium tracking-wide drop-shadow-[0_8px_28px_rgba(0,0,0,0.55)]"
+              style={{
+                fontSize: `${fontSizePx}px`,
+                lineHeight: 1.22,
+              }}
+            >
               {slide.lines.map((line, index) => (
-                <span key={`${index}-${line}`} className="block px-4">
+                <span key={`${index}-${line}`} className="block max-w-full break-words">
                   {line}
                 </span>
               ))}

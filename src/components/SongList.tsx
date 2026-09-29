@@ -1,7 +1,9 @@
+import { SONG_DRAG_TYPE } from "../lib/setlist";
 import { usePresentation } from "../state/PresentationContext";
 
 export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
-  const { results, activeSong, selectSong, createNewSong } = usePresentation();
+  const { results, activeSong, selectSong, createNewSong, deleteSong, addToSetlist } =
+    usePresentation();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -30,26 +32,66 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
         {results.map((song) => {
           const active = activeSong?.id === song.id;
           return (
-            <button
+            <div
               key={song.id}
-              type="button"
-              onClick={() => void selectSong(song)}
-              className={`w-full rounded-xl border px-3 py-3 text-left transition ${
-                active
-                  ? "border-gold-500/40 bg-gold-500/10"
-                  : "border-transparent bg-white/[0.03] hover:border-white/10 hover:bg-white/[0.05]"
-              }`}
+              draggable
+              onDragStart={(event) => {
+                event.dataTransfer.setData(SONG_DRAG_TYPE, song.id);
+                event.dataTransfer.setData("text/plain", song.title);
+                event.dataTransfer.effectAllowed = "copy";
+              }}
+              className="group relative"
             >
-              <div className="truncate font-medium text-stone-100">{song.title}</div>
-              <div className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
-                <span className="truncate">{song.artist}</span>
-                {song.key && (
-                  <span className="rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] tracking-wide text-gold-200">
-                    {song.key}
-                  </span>
-                )}
-              </div>
-            </button>
+              <button
+                type="button"
+                onClick={() => void selectSong(song)}
+                className={`w-full cursor-grab rounded-xl border py-3 pl-3 pr-16 text-left transition active:cursor-grabbing ${
+                  active
+                    ? "border-gold-500/40 bg-gold-500/10"
+                    : "border-transparent bg-white/[0.03] hover:border-white/10 hover:bg-white/[0.05]"
+                }`}
+              >
+                <div className="truncate font-medium text-stone-100">{song.title}</div>
+                <div className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
+                  <span className="truncate">{song.artist}</span>
+                  {song.key && (
+                    <span className="rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] tracking-wide text-gold-200">
+                      {song.key}
+                    </span>
+                  )}
+                </div>
+              </button>
+              <button
+                type="button"
+                aria-label={`Add ${song.title} to setlist`}
+                title="Add to setlist"
+                onClick={() => addToSetlist(song.id)}
+                className="absolute right-9 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-stone-500 opacity-0 transition hover:bg-gold-500/15 hover:text-gold-200 focus:opacity-100 group-hover:opacity-100"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path d="M10.75 4.75a.75.75 0 0 0-1.5 0v4.5h-4.5a.75.75 0 0 0 0 1.5h4.5v4.5a.75.75 0 0 0 1.5 0v-4.5h4.5a.75.75 0 0 0 0-1.5h-4.5v-4.5Z" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                aria-label={`Delete ${song.title}`}
+                title="Delete song"
+                onClick={() => {
+                  if (window.confirm(`Delete "${song.title}"? This cannot be undone.`)) {
+                    void deleteSong(song.id);
+                  }
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-stone-500 opacity-0 transition hover:bg-red-500/15 hover:text-red-300 focus:opacity-100 group-hover:opacity-100"
+              >
+                <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4" aria-hidden="true">
+                  <path
+                    fillRule="evenodd"
+                    d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
           );
         })}
       </div>

@@ -41,12 +41,14 @@ function PreviewCard({
 }
 
 export default function DualPreview() {
-  const { slides, currentIndex, blackout, clear } = usePresentation();
+  const { slides, currentIndex, blackout, clear, upcoming } = usePresentation();
   const current = slides[currentIndex];
-  const upcoming = slides[currentIndex + 1];
 
   const currentLines = blackout || clear ? [] : current?.lines ?? [];
-  const nextLines = upcoming?.lines ?? [];
+  const nextLines = upcoming?.slide.lines ?? [];
+  const nextSection = upcoming?.songTitle
+    ? `${upcoming.songTitle} · ${upcoming.slide.sectionLabel}`
+    : upcoming?.slide.sectionLabel;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -56,8 +58,8 @@ export default function DualPreview() {
         lines={currentLines}
       />
       <PreviewCard
-        label="Next slide"
-        section={upcoming?.sectionLabel}
+        label={upcoming?.songTitle ? "Next song" : "Next slide"}
+        section={nextSection}
         lines={nextLines}
         muted
       />
