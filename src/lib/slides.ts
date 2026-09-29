@@ -37,7 +37,7 @@ export function parseEditorText(raw: string): {
   let unnamed = 0;
 
   const flush = () => {
-    if (current && current.lines.length) {
+    if (current) {
       sections.push(current);
     }
     current = null;
@@ -47,19 +47,19 @@ export function parseEditorText(raw: string): {
     const line = original.trim();
     if (!line) continue;
 
-    const titleMatch = line.match(/^title\s*:\s*(.+)$/i);
+    const titleMatch = line.match(/^title\s*:\s*(.*)$/i);
     if (titleMatch) {
-      title = titleMatch[1].trim();
+      title = titleMatch[1].trim() || "Untitled";
       continue;
     }
-    const artistMatch = line.match(/^artist\s*:\s*(.+)$/i);
+    const artistMatch = line.match(/^artist\s*:\s*(.*)$/i);
     if (artistMatch) {
       artist = artistMatch[1].trim();
       continue;
     }
-    const keyMatch = line.match(/^key\s*:\s*(.+)$/i);
+    const keyMatch = line.match(/^key\s*:\s*(.*)$/i);
     if (keyMatch) {
-      key = keyMatch[1].trim();
+      key = keyMatch[1].trim() || undefined;
       continue;
     }
 
@@ -120,7 +120,7 @@ function inferKind(label: string): SectionKind {
 }
 
 function chunkLines(lines: string[], size: number): string[][] {
-  if (!lines.length) return [];
+  if (!lines.length) return [[]];
   const chunks: string[][] = [];
   for (let i = 0; i < lines.length; i += size) {
     chunks.push(lines.slice(i, i + size));

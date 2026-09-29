@@ -276,7 +276,7 @@ function normalize(value: string) {
 export async function searchSongs(query: string): Promise<Song[]> {
   await wait(60);
   const q = normalize(query);
-  if (!q) return SONG_LIBRARY;
+  if (!q) return [...SONG_LIBRARY];
   return SONG_LIBRARY.filter((song) => {
     const haystack = normalize(
       `${song.title} ${song.artist} ${song.sections.map((s) => s.lines.join(" ")).join(" ")}`,
@@ -288,6 +288,17 @@ export async function searchSongs(query: string): Promise<Song[]> {
 export async function getSongById(id: string): Promise<Song | undefined> {
   await wait(80);
   return SONG_LIBRARY.find((song) => song.id === id);
+}
+
+export async function saveSong(song: Song): Promise<Song> {
+  await wait(40);
+  const index = SONG_LIBRARY.findIndex((existing) => existing.id === song.id);
+  if (index === -1) {
+    SONG_LIBRARY.push(song);
+  } else {
+    SONG_LIBRARY[index] = song;
+  }
+  return song;
 }
 
 function wait(ms: number) {

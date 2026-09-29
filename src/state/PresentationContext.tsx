@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { parseEditorText, sectionsToSlides, songToEditorText, songToSlides } from "../lib/slides";
-import { getSongById, searchSongs, SONG_LIBRARY } from "../lib/songs";
+import { getSongById, saveSong, searchSongs, SONG_LIBRARY } from "../lib/songs";
 import type { Slide, SlidePayload, Song } from "../types";
 
 type PresentationState = {
@@ -25,8 +25,9 @@ type PresentationState = {
   presentationOpen: boolean;
   setQuery: (value: string) => void;
   selectSong: (song: Song) => Promise<void>;
+  createNewSong: () => void;
   setEditorText: (value: string) => void;
-  applyEditor: () => void;
+  applyEditor: () => Promise<void>;
   goTo: (index: number) => void;
   next: () => void;
   prev: () => void;
@@ -54,6 +55,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [blackout, setBlackout] = useState(false);
   const [clear, setClear] = useState(false);
   const [presentationOpen, setPresentationOpen] = useState(false);
+  const [libraryVersion, setLibraryVersion] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,7 +71,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [query]);
+  }, [query, libraryVersion]);
 
   const currentSlide = slides[currentIndex];
 
@@ -107,7 +109,22 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     setBlackout(false);
   }, []);
 
-  const applyEditor = useCallback(() => {
+  const createNewSong = useCallback(() => {
+    const blank: Song = {
+      id: `custom-${Date.now()}`,
+      title: "Untitled",
+      artist: "",
+      sections: [{ id: "new-1", kind: "verse", label: "Verse 1", lines: [] }],
+    };
+    setActiveSong(blank);
+    setEditorText(songToEditorText(blank));
+    setSlides(songToSlides(blank));
+    setCurrentIndex(0);
+    setClear(false);
+    setBlackout(false);
+  }, []);
+
+  const applyEditor = useCallback(async () => {
     const parsed = parseEditorText(editorText);
     const nextSong: Song = {
       id: activeSong?.id ?? `custom-${Date.now()}`,
@@ -119,6 +136,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     setActiveSong(nextSong);
     setSlides(sectionsToSlides(parsed.sections));
     setCurrentIndex(0);
+    await saveSong(nextSong);
+    setLibraryVersion((version) => version + 1);
   }, [activeSong?.id, editorText]);
 
   const goTo = useCallback(
@@ -185,6 +204,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       presentationOpen,
       setQuery,
       selectSong,
+      createNewSong,
       setEditorText,
       applyEditor,
       goTo,
@@ -208,6 +228,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       clear,
       presentationOpen,
       selectSong,
+      createNewSong,
       applyEditor,
       goTo,
       next,

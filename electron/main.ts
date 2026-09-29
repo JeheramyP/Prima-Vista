@@ -14,6 +14,7 @@ process.env.VITE_PUBLIC = isDev
   : process.env.DIST;
 
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
+const preloadPath = path.join(__dirname, "preload.mjs");
 
 let controllerWindow: BrowserWindow | null = null;
 let presentationWindow: BrowserWindow | null = null;
@@ -57,7 +58,7 @@ function createControllerWindow() {
     title: "Prima Vista",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
@@ -106,7 +107,7 @@ function createPresentationWindow() {
     skipTaskbar: false,
     alwaysOnTop: false,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: preloadPath,
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,

@@ -30,6 +30,17 @@ export default function ControllerView() {
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
       if (typing) return;
+      if (target?.tagName === "BUTTON" && (event.code === "Space" || event.key === "Enter")) {
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "enter") {
+        event.preventDefault();
+        void applyEditor();
+        return;
+      }
+
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
 
       if (event.code === "Space" || event.key === "ArrowRight" || event.key === "PageDown") {
         event.preventDefault();
@@ -51,9 +62,6 @@ export default function ControllerView() {
         event.preventDefault();
         setClear(!clear);
         setBlackout(false);
-      } else if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "enter") {
-        event.preventDefault();
-        applyEditor();
       }
     };
 
@@ -68,7 +76,7 @@ export default function ControllerView() {
         <aside className="flex min-h-0 flex-col border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
           <SearchBar />
           <div className="mt-4 flex min-h-0 flex-1 flex-col">
-            <SongList />
+            <SongList onNewSong={() => setTab("editor")} />
           </div>
         </aside>
         <main className="flex min-h-0 flex-col gap-4 overflow-hidden p-4">

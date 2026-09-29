@@ -1,15 +1,25 @@
 import { usePresentation } from "../state/PresentationContext";
 
-export default function SongList() {
-  const { results, activeSong, selectSong } = usePresentation();
+export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
+  const { results, activeSong, selectSong, createNewSong } = usePresentation();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-baseline justify-between px-1">
+      <div className="mb-3 flex items-center justify-between gap-2 px-1">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Songs
         </h2>
-        <span className="text-[11px] text-stone-500">{results.length}</span>
+        <span className="ml-auto text-[11px] text-stone-500">{results.length}</span>
+        <button
+          type="button"
+          onClick={() => {
+            createNewSong();
+            onNewSong?.();
+          }}
+          className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[11px] font-medium text-gold-200 transition hover:bg-gold-500/20"
+        >
+          New
+        </button>
       </div>
       <div className="min-h-0 flex-1 space-y-1 overflow-auto pr-1">
         {results.length === 0 && (

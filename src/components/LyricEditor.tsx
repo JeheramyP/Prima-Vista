@@ -11,7 +11,7 @@ export default function LyricEditor() {
         </h2>
         <button
           type="button"
-          onClick={applyEditor}
+          onClick={() => void applyEditor()}
           className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-1.5 text-xs font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
           Rebuild slides

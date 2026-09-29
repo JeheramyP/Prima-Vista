@@ -16,12 +16,14 @@ export default function PresentationView() {
   const [slide, setSlide] = useState<SlidePayload>(EMPTY);
 
   useEffect(() => {
+    let cancelled = false;
     let unsub = () => {};
     const boot = async () => {
-      if (window.primaVista) {
-        const current = await window.primaVista.getSlide();
-        setSlide(current);
-        unsub = window.primaVista.onSlideUpdate(setSlide);
+      const api = window.primaVista;
+      if (api) {
+        unsub = api.onSlideUpdate(setSlide);
+        const current = await api.getSlide();
+        if (!cancelled) setSlide(current);
         return;
       }
       setSlide({
@@ -36,7 +38,10 @@ export default function PresentationView() {
       });
     };
     void boot();
-    return () => unsub();
+    return () => {
+      cancelled = true;
+      unsub();
+    };
   }, []);
 
   const hidden = slide.blackout || slide.clear || !slide.lines.length;
