@@ -30,15 +30,30 @@ export default function SlideGrid() {
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${kindTone(slide.kind)}`}
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                    slide.titleSlide
+                      ? "border-gold-500/30 bg-gold-500/20 text-gold-200"
+                      : kindTone(slide.kind)
+                  }`}
                 >
                   {slide.sectionLabel}
                 </span>
                 <span className="text-[11px] tabular-nums text-stone-500">{index + 1}</span>
               </div>
-              <p className="min-h-[3.2rem] whitespace-pre-line text-sm leading-snug text-stone-200">
-                {slide.lines.join("\n")}
-              </p>
+              {slide.titleSlide ? (
+                <div className="relative min-h-[4.4rem]">
+                  <p className="px-1 pt-1 text-center text-[15px] font-medium leading-snug text-stone-100">
+                    {slide.lines[0]}
+                  </p>
+                  {slide.author ? (
+                    <p className="mt-2 text-right text-[11px] leading-snug text-stone-400">{slide.author}</p>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="min-h-[3.2rem] whitespace-pre-line text-sm leading-snug text-stone-200">
+                  {slide.lines.join("\n")}
+                </p>
+              )}
             </button>
           );
         })}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { confirmDialog } from "../lib/confirm";
 import {
   SECTION_ID_DRAG_TYPE,
   SECTION_KIND_DRAG_TYPE,
@@ -22,7 +23,13 @@ function hasDragType(event: DragEvent, type: string) {
 const fieldClass =
   "w-full rounded-xl border border-white/10 bg-sanctuary-950 px-3 py-2 text-sm text-stone-100 outline-none placeholder:text-stone-600 focus:border-gold-500/40 focus:ring-2 focus:ring-gold-400/15";
 
-export default function LyricEditor() {
+export default function LyricEditor({
+  submitLabel = "Update slides",
+  onSubmit,
+}: {
+  submitLabel?: string;
+  onSubmit?: () => void;
+} = {}) {
   const { draft, setDraft, applyEditor } = usePresentation();
   const listRef = useRef<HTMLDivElement>(null);
   const paletteDragged = useRef(false);
@@ -106,10 +113,13 @@ export default function LyricEditor() {
         </h2>
         <button
           type="button"
-          onClick={() => void applyEditor()}
+          onClick={() => {
+            if (onSubmit) onSubmit();
+            else void applyEditor();
+          }}
           className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-1.5 text-xs font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
-          Update slides
+          {submitLabel}
         </button>
       </div>
 
@@ -246,7 +256,7 @@ export default function LyricEditor() {
                 }
                 onRemove={() => {
                   const filled = section.lines.some((line) => line.trim());
-                  if (filled && !window.confirm(`Remove ${section.label}?`)) return;
+                  if (filled && !confirmDialog(`Remove ${section.label}?`)) return;
                   setDraft((current) => ({
                     ...current,
                     sections: current.sections.filter((item) => item.id !== section.id),
@@ -259,8 +269,8 @@ export default function LyricEditor() {
         {sections.length > 0 && dropIndex === sections.length && dropMarker}
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
-        Drag a block into the song, or click one to add it. Drag a card handle to reorder. Every two
-        lyric lines become one slide.
+        A title slide is added automatically. Drag a block into the song, or click one to add it.
+        Drag a card handle to reorder. Every two lyric lines become one slide.
       </p>
     </section>
   );

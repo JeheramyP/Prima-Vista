@@ -1,5 +1,7 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import DualPreview from "../components/DualPreview";
+import ThemePicker from "../components/ThemePicker";
 import LyricEditor from "../components/LyricEditor";
 import SearchBar from "../components/SearchBar";
 import SetlistPanel from "../components/SetlistPanel";
@@ -8,7 +10,7 @@ import SongList from "../components/SongList";
 import Toolbar from "../components/Toolbar";
 import { usePresentation } from "../state/PresentationContext";
 
-export default function ControllerView() {
+export default function ControllerView({ mode = "edit" }: { mode?: "edit" | "new" }) {
   const {
     next,
     prev,
@@ -19,15 +21,29 @@ export default function ControllerView() {
     applyEditor,
     blackout,
     clear,
+    beginNewSong,
   } = usePresentation();
+  const navigate = useNavigate();
+  const creating = mode === "new";
   const [tab, setTab] = useState<"overview" | "editor">("overview");
+
+  useEffect(() => {
+    if (!creating) return;
+    beginNewSong();
+  }, [creating, beginNewSong]);
+
+  const commitEditor = useCallback(() => {
+    void applyEditor().then(() => {
+      if (creating) navigate("/");
+    });
+  }, [applyEditor, creating, navigate]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "enter") {
         event.preventDefault();
-        void applyEditor();
+        commitEditor();
         return;
       }
 
@@ -37,9 +53,7 @@ export default function ControllerView() {
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
       if (typing) return;
-      if (target?.tagName === "BUTTON" && (event.code === "Space" || event.key === "Enter")) {
-        return;
-      }
+      if (target?.tagName === "BUTTON" && event.key === "Enter") return;
 
       if (event.ctrlKey || event.metaKey || event.altKey) return;
 
@@ -68,7 +82,7 @@ export default function ControllerView() {
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [applyEditor, blackout, clear, goTo, next, prev, setBlackout, setClear, slides.length]);
+  }, [blackout, clear, commitEditor, goTo, next, prev, setBlackout, setClear, slides.length]);
 
   return (
     <div className="flex h-full flex-col bg-sanctuary-950 text-stone-100">
@@ -80,24 +94,39 @@ export default function ControllerView() {
         <aside className="flex min-h-0 flex-col border-b border-white/10 p-4 lg:border-b-0 lg:border-r">
           <SearchBar />
           <div className="mt-4 flex min-h-0 flex-1 flex-col">
-            <SongList onNewSong={() => setTab("editor")} />
+            <SongList />
           </div>
         </aside>
         <main className="flex min-h-0 flex-col gap-4 overflow-hidden p-4">
+          <ThemePicker />
           <DualPreview />
           <div className="flex items-center gap-2">
-            <TabButton active={tab === "overview"} onClick={() => setTab("overview")}>
-              Slides
-            </TabButton>
-            <TabButton active={tab === "editor"} onClick={() => setTab("editor")}>
-              Editor
-            </TabButton>
+            {creating ? (
+              <span className="rounded-full bg-white px-3 py-1 text-xs font-medium text-sanctuary-950">
+                New song
+              </span>
+            ) : (
+              <>
+                <TabButton active={tab === "overview"} onClick={() => setTab("overview")}>
+                  Slides
+                </TabButton>
+                <TabButton active={tab === "editor"} onClick={() => setTab("editor")}>
+                  Editor
+                </TabButton>
+              </>
+            )}
             <p className="ml-auto hidden text-[11px] text-stone-500 sm:block">
               Space / arrows change slides · B blackout · C clear
             </p>
           </div>
           <div className="min-h-0 flex-1 overflow-auto">
-            {tab === "overview" ? <SlideGrid /> : <LyricEditor />}
+            {creating ? (
+              <LyricEditor submitLabel="Add Song" onSubmit={commitEditor} />
+            ) : tab === "overview" ? (
+              <SlideGrid />
+            ) : (
+              <LyricEditor />
+            )}
           </div>
         </main>
       </div>

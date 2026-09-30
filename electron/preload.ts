@@ -9,6 +9,8 @@ export type SlidePayload = {
   total: number;
   blackout: boolean;
   clear: boolean;
+  theme?: string;
+  titleSlide?: boolean;
 };
 
 export type SongRecord = {
@@ -39,4 +41,5 @@ contextBridge.exposeInMainWorld("primaVista", {
   loadSongs: () => ipcRenderer.invoke("songs:load") as Promise<SongRecord[] | null>,
   saveSongs: (songs: SongRecord[]) =>
     ipcRenderer.invoke("songs:save", songs) as Promise<boolean>,
+  restoreWindowFocus: () => ipcRenderer.send("window:focus-fix"),
 });

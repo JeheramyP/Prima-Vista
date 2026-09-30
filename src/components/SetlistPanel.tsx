@@ -1,4 +1,6 @@
 import { useRef, useState, type DragEvent } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { confirmDialog } from "../lib/confirm";
 import { SETLIST_DRAG_TYPE, SONG_DRAG_TYPE } from "../lib/setlist";
 import { usePresentation } from "../state/PresentationContext";
 
@@ -16,6 +18,8 @@ export default function SetlistPanel() {
     clearSetlist,
     selectSetlistEntry,
   } = usePresentation();
+  const navigate = useNavigate();
+  const creating = useLocation().pathname === "/new";
   const listRef = useRef<HTMLDivElement>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -70,7 +74,7 @@ export default function SetlistPanel() {
           <button
             type="button"
             onClick={() => {
-              if (window.confirm("Remove every song from the setlist?")) clearSetlist();
+              if (confirmDialog("Remove every song from the setlist?")) clearSetlist();
             }}
             className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-stone-300 transition hover:border-white/20 hover:bg-white/[0.07]"
           >
@@ -118,7 +122,10 @@ export default function SetlistPanel() {
               >
                 <button
                   type="button"
-                  onClick={() => selectSetlistEntry(item.entry.id)}
+                  onClick={() => {
+                    selectSetlistEntry(item.entry.id);
+                    if (creating) navigate("/");
+                  }}
                   className={`flex w-full cursor-grab items-center gap-3 rounded-xl border py-2.5 pl-3 pr-9 text-left transition active:cursor-grabbing ${
                     active
                       ? "border-gold-500/40 bg-gold-500/10"

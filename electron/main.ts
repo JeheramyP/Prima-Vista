@@ -29,6 +29,8 @@ type SlidePayload = {
   total: number;
   blackout: boolean;
   clear: boolean;
+  theme?: string;
+  titleSlide?: boolean;
 };
 
 type SongRecord = {
@@ -209,6 +211,17 @@ app.whenReady().then(() => {
     if (!Array.isArray(songs)) return false;
     await writeLibraryFile(songs);
     return true;
+  });
+
+  // window.confirm/alert leave the renderer unable to receive keystrokes on
+  // Linux and Windows until the window is blurred and focused again.
+  // https://github.com/electron/electron/issues/31917
+  ipcMain.on("window:focus-fix", (event) => {
+    if (process.platform === "darwin") return;
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win || win.isDestroyed()) return;
+    win.blur();
+    win.focus();
   });
 
   app.on("activate", () => {

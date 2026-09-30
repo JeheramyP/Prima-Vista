@@ -5,12 +5,14 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type Dispatch,
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { draftToSong, EMPTY_DRAFT, sectionsToSlides, songToDraft, songToSlides } from "../lib/slides";
+import { songThemeId, type StageThemeId } from "../lib/stageThemes";
+import { draftToSong, EMPTY_DRAFT, songToDraft, songToSlides } from "../lib/slides";
 import {
   deleteSong as deleteSongFromLibrary,
   getSongById,
@@ -26,7 +28,7 @@ type SlidePosition = "first" | "last";
 
 export type SetlistItem = { entry: SetlistEntry; song: Song };
 
-export type UpcomingSlide = { slide: Slide; songTitle?: string };
+export type UpcomingSlide = { slide: Slide; songTitle?: string; theme: StageThemeId };
 
 type PresentationState = {
   query: string;
@@ -50,9 +52,11 @@ type PresentationState = {
   setQuery: (value: string) => void;
   selectSong: (song: Song) => Promise<void>;
   createNewSong: () => void;
+  beginNewSong: () => void;
   deleteSong: (id: string) => Promise<void>;
   setDraft: Dispatch<SetStateAction<SongDraft>>;
   applyEditor: () => Promise<void>;
+  setSongTheme: (theme: StageThemeId) => void;
   goTo: (index: number) => void;
   next: () => void;
   prev: () => void;
@@ -70,7 +74,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [results, setResults] = useState<Song[]>(SONG_LIBRARY);
   const [searching, setSearching] = useState(false);
   const [activeSong, setActiveSong] = useState<Song | null>(SONG_LIBRARY[0] ?? null);
-  const [draft, setDraft] = useState<SongDraft>(
+  const [draft, setDraftState] = useState<SongDraft>(
     SONG_LIBRARY[0] ? songToDraft(SONG_LIBRARY[0]) : EMPTY_DRAFT,
   );
   const [slides, setSlides] = useState<Slide[]>(
@@ -84,6 +88,17 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [libraryReady, setLibraryReady] = useState(false);
   const [setlistEntries, setSetlistEntries] = useState<SetlistEntry[]>(loadSetlist);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const activeSongRef = useRef(activeSong);
+  activeSongRef.current = activeSong;
+  const draftRef = useRef(draft);
+  draftRef.current = draft;
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const selectionTouchedRef = useRef(false);
+  const setDraft = useCallback<Dispatch<SetStateAction<SongDraft>>>((value) => {
+    selectionTouchedRef.current = true;
+    setDraftState(value);
+  }, []);
 
   useEffect(() => {
     saveSetlist(setlistEntries);
@@ -116,10 +131,26 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       const songs = await loadLibrary();
       if (cancelled) return;
       const first = songs[0] ?? null;
-      setActiveSong(first);
-      setDraft(first ? songToDraft(first) : EMPTY_DRAFT);
-      setSlides(first ? songToSlides(first) : []);
-      setCurrentIndex(0);
+      if (selectionTouchedRef.current) {
+        const current = activeSongRef.current;
+        const fresh = current ? songs.find((song) => song.id === current.id) : undefined;
+        const draftUntouched =
+          !!current && JSON.stringify(draftRef.current) === JSON.stringify(songToDraft(current));
+        if (fresh && draftUntouched) {
+          const songSlides = songToSlides(fresh);
+          setActiveSong(fresh);
+          setDraftState(songToDraft(fresh));
+          setSlides(songSlides);
+          setCurrentIndex(
+            Math.min(currentIndexRef.current, Math.max(0, songSlides.length - 1)),
+          );
+        }
+      } else {
+        setActiveSong(first);
+        setDraftState(first ? songToDraft(first) : EMPTY_DRAFT);
+        setSlides(first ? songToSlides(first) : []);
+        setCurrentIndex(0);
+      }
       setLibraryReady(true);
       setLibraryVersion((version) => version + 1);
     })();
@@ -157,6 +188,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       total: slides.length,
       blackout,
       clear,
+      theme: songThemeId(activeSong),
+      titleSlide: currentSlide?.titleSlide ?? false,
     }),
     [activeSong, currentSlide, currentIndex, slides.length, blackout, clear],
   );
@@ -172,17 +205,20 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showSong = useCallback((song: Song, position: SlidePosition = "first") => {
+    selectionTouchedRef.current = true;
     const songSlides = songToSlides(song);
+    const nextIndex = position === "last" ? Math.max(0, songSlides.length - 1) : 0;
     setActiveSong(song);
-    setDraft(songToDraft(song));
+    setDraftState(songToDraft(song));
     setSlides(songSlides);
-    setCurrentIndex(position === "last" ? Math.max(0, songSlides.length - 1) : 0);
+    setCurrentIndex(nextIndex);
     setClear(false);
     setBlackout(false);
   }, []);
 
   const selectSong = useCallback(
     async (song: Song) => {
+      selectionTouchedRef.current = true;
       const full = (await getSongById(song.id)) ?? song;
       setActiveEntryId(null);
       showSong(full);
@@ -238,12 +274,15 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const prevSetlistItem = activeSetlistIndex > 0 ? setlist[activeSetlistIndex - 1] : undefined;
 
   const upcoming = useMemo<UpcomingSlide | null>(() => {
+    const theme = songThemeId(activeSong);
     const inSong = slides[currentIndex + 1];
-    if (inSong) return { slide: inSong };
+    if (inSong) return { slide: inSong, theme };
     if (!nextSetlistItem) return null;
     const first = songToSlides(nextSetlistItem.song)[0];
-    return first ? { slide: first, songTitle: nextSetlistItem.song.title } : null;
-  }, [slides, currentIndex, nextSetlistItem]);
+    return first
+      ? { slide: first, songTitle: nextSetlistItem.song.title, theme: songThemeId(nextSetlistItem.song) }
+      : null;
+  }, [activeSong, slides, currentIndex, nextSetlistItem]);
 
   const createNewSong = useCallback(() => {
     const blank: Song = {
@@ -252,14 +291,22 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       artist: "",
       sections: [],
     };
+    selectionTouchedRef.current = true;
+    activeSongRef.current = blank;
     setActiveEntryId(null);
     setActiveSong(blank);
-    setDraft(songToDraft(blank));
+    setDraftState(songToDraft(blank));
     setSlides(songToSlides(blank));
     setCurrentIndex(0);
     setClear(false);
     setBlackout(false);
   }, []);
+
+  const beginNewSong = useCallback(() => {
+    const current = activeSongRef.current;
+    if (current && !SONG_LIBRARY.some((song) => song.id === current.id)) return;
+    createNewSong();
+  }, [createNewSong]);
 
   const deleteSong = useCallback(
     async (id: string) => {
@@ -269,7 +316,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
         setActiveEntryId(null);
         const fallback = SONG_LIBRARY[0] ?? null;
         setActiveSong(fallback);
-        setDraft(fallback ? songToDraft(fallback) : EMPTY_DRAFT);
+        setDraftState(fallback ? songToDraft(fallback) : EMPTY_DRAFT);
         setSlides(fallback ? songToSlides(fallback) : []);
         setCurrentIndex(0);
         setClear(false);
@@ -280,15 +327,28 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     [activeSong?.id],
   );
 
+  const setSongTheme = useCallback((theme: StageThemeId) => {
+    if (!activeSong) return;
+    const next = { ...activeSong, theme };
+    setActiveSong(next);
+    const index = SONG_LIBRARY.findIndex((song) => song.id === next.id);
+    if (index === -1) return;
+    SONG_LIBRARY[index] = next;
+    void saveSong(next).then(() => {
+      setLibraryVersion((version) => version + 1);
+    });
+  }, [activeSong]);
+
   const applyEditor = useCallback(async () => {
     const nextSong = draftToSong(activeSong?.id ?? `custom-${Date.now()}`, draft);
+    if (activeSong?.theme) nextSong.theme = activeSong.theme;
     setActiveSong(nextSong);
-    setDraft(songToDraft(nextSong));
-    setSlides(sectionsToSlides(nextSong.sections));
+    setDraftState(songToDraft(nextSong));
+    setSlides(songToSlides(nextSong));
     setCurrentIndex(0);
     await saveSong(nextSong);
     setLibraryVersion((version) => version + 1);
-  }, [activeSong?.id, draft]);
+  }, [activeSong, draft]);
 
   const goTo = useCallback(
     (index: number) => {
@@ -371,9 +431,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setQuery,
       selectSong,
       createNewSong,
+      beginNewSong,
       deleteSong,
       setDraft,
       applyEditor,
+      setSongTheme,
       goTo,
       next,
       prev,
@@ -404,8 +466,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       selectSetlistEntry,
       selectSong,
       createNewSong,
+      beginNewSong,
       deleteSong,
+      setDraft,
       applyEditor,
+      setSongTheme,
       goTo,
       next,
       prev,

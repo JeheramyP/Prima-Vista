@@ -49,8 +49,23 @@ export function sectionsToSlides(sections: LyricSection[]): Slide[] {
   return slides;
 }
 
+/** Opening slide for a song. Generated from the title and artist, never stored as a section. */
+export function titleSlideForSong(song: Pick<Song, "id" | "title" | "artist">): Slide {
+  const title = song.title.trim() || "Untitled";
+  const author = song.artist.trim();
+  return {
+    id: `${song.id}:title`,
+    sectionId: `${song.id}:title`,
+    sectionLabel: "Title",
+    kind: "other",
+    lines: [title],
+    titleSlide: true,
+    author: author || undefined,
+  };
+}
+
 export function songToSlides(song: Song): Slide[] {
-  return sectionsToSlides(song.sections);
+  return [titleSlideForSong(song), ...sectionsToSlides(song.sections)];
 }
 
 function chunkLines(lines: string[], size: number): string[][] {

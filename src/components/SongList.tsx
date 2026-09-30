@@ -1,9 +1,13 @@
+import { useLocation, useNavigate } from "react-router-dom";
+import { confirmDialog } from "../lib/confirm";
 import { SONG_DRAG_TYPE } from "../lib/setlist";
 import { usePresentation } from "../state/PresentationContext";
 
-export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
+export default function SongList() {
   const { results, activeSong, selectSong, createNewSong, deleteSong, addToSetlist } =
     usePresentation();
+  const navigate = useNavigate();
+  const creating = useLocation().pathname === "/new";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -16,7 +20,7 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
           type="button"
           onClick={() => {
             createNewSong();
-            onNewSong?.();
+            navigate("/new");
           }}
           className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[11px] font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
@@ -44,7 +48,10 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
             >
               <button
                 type="button"
-                onClick={() => void selectSong(song)}
+                onClick={() => {
+                  void selectSong(song);
+                  if (creating) navigate("/");
+                }}
                 className={`w-full cursor-grab rounded-xl border py-3 pl-3 pr-16 text-left transition active:cursor-grabbing ${
                   active
                     ? "border-gold-500/40 bg-gold-500/10"
@@ -77,7 +84,7 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
                 aria-label={`Delete ${song.title}`}
                 title="Delete song"
                 onClick={() => {
-                  if (window.confirm(`Delete "${song.title}"? This cannot be undone.`)) {
+                  if (confirmDialog(`Delete "${song.title}"? This cannot be undone.`)) {
                     void deleteSong(song.id);
                   }
                 }}
