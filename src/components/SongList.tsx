@@ -1,13 +1,21 @@
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useRef } from "react";
 import { confirmDialog } from "../lib/confirm";
+import { beginDragClickGuard, endDragClickGuard, ignoreClickAfterDrag } from "../lib/dragClick";
 import { SONG_DRAG_TYPE } from "../lib/setlist";
 import { usePresentation } from "../state/PresentationContext";
 
-export default function SongList() {
+export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
   const { results, activeSong, selectSong, createNewSong, deleteSong, addToSetlist } =
     usePresentation();
-  const navigate = useNavigate();
-  const creating = useLocation().pathname === "/new";
+  const listRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!activeSong) return;
+    const row = listRef.current?.querySelector<HTMLElement>(
+      `[data-song-id="${CSS.escape(activeSong.id)}"]`,
+    );
+    row?.scrollIntoView({ block: "nearest" });
+  }, [activeSong?.id]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -20,14 +28,18 @@ export default function SongList() {
           type="button"
           onClick={() => {
             createNewSong();
-            navigate("/new");
+            onNewSong?.();
           }}
           className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[11px] font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
           New
         </button>
       </div>
-      <div className="min-h-0 flex-1 space-y-1 overflow-auto pr-1">
+      <div
+        ref={listRef}
+        onClickCapture={ignoreClickAfterDrag}
+        className="min-h-0 flex-1 space-y-1 overflow-auto pr-1"
+      >
         {results.length === 0 && (
           <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm text-stone-500">
             No matching songs in the library.
@@ -40,18 +52,18 @@ export default function SongList() {
               key={song.id}
               draggable
               onDragStart={(event) => {
+                beginDragClickGuard();
                 event.dataTransfer.setData(SONG_DRAG_TYPE, song.id);
                 event.dataTransfer.setData("text/plain", song.title);
                 event.dataTransfer.effectAllowed = "copy";
               }}
+              onDragEnd={endDragClickGuard}
+              data-song-id={song.id}
               className="group relative"
             >
               <button
                 type="button"
-                onClick={() => {
-                  void selectSong(song);
-                  if (creating) navigate("/");
-                }}
+                onClick={() => void selectSong(song)}
                 className={`w-full cursor-grab rounded-xl border py-3 pl-3 pr-16 text-left transition active:cursor-grabbing ${
                   active
                     ? "border-gold-500/40 bg-gold-500/10"

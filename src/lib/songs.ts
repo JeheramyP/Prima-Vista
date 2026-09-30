@@ -270,6 +270,7 @@ export const SONG_LIBRARY: Song[] = structuredClone([
 ]);
 
 const STORAGE_KEY = "prima-vista-song-library";
+const removedSongIds = new Set<string>();
 
 function replaceLibrary(songs: Song[]) {
   SONG_LIBRARY.splice(0, SONG_LIBRARY.length, ...songs);
@@ -304,7 +305,7 @@ async function readPersistedLibrary(): Promise<Song[] | null> {
   return null;
 }
 
-async function writePersistedLibrary(songs: Song[]) {
+async function commitPersistedLibrary(songs: Song[]) {
   if (window.primaVista?.saveSongs) {
     await window.primaVista.saveSongs(songs);
     return;
@@ -312,12 +313,28 @@ async function writePersistedLibrary(songs: Song[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
 }
 
+let libraryWriteTail: Promise<void> = Promise.resolve();
+
+/**
+ * Whole-library saves must run one at a time. Each turn copies the in-memory
+ * library when the write starts, so a slower save cannot finish last and
+ * replace the file with a stale copy.
+ */
+function persistLibrary(): Promise<void> {
+  const write = libraryWriteTail.then(() => commitPersistedLibrary(structuredClone(SONG_LIBRARY)));
+  libraryWriteTail = write.then(
+    () => undefined,
+    () => undefined,
+  );
+  return write;
+}
+
 export async function loadLibrary(): Promise<Song[]> {
   const stored = await readPersistedLibrary();
   if (stored) {
     replaceLibrary(stored);
   } else {
-    await writePersistedLibrary([...SONG_LIBRARY]);
+    await persistLibrary();
   }
   return [...SONG_LIBRARY];
 }
@@ -345,21 +362,25 @@ export async function getSongById(id: string): Promise<Song | undefined> {
 
 export async function saveSong(song: Song): Promise<Song> {
   await wait(40);
+  if (removedSongIds.has(song.id)) return song;
   const index = SONG_LIBRARY.findIndex((existing) => existing.id === song.id);
-  if (index === -1) {
-    SONG_LIBRARY.push(song);
-  } else {
-    SONG_LIBRARY[index] = song;
+  if (index === -1) SONG_LIBRARY.push(song);
+  else SONG_LIBRARY[index] = song;
+  if (removedSongIds.has(song.id)) {
+    const lateIndex = SONG_LIBRARY.findIndex((existing) => existing.id === song.id);
+    if (lateIndex !== -1) SONG_LIBRARY.splice(lateIndex, 1);
+    return song;
   }
-  await writePersistedLibrary([...SONG_LIBRARY]);
+  await persistLibrary();
   return song;
 }
 
 export async function deleteSong(id: string): Promise<boolean> {
+  removedSongIds.add(id);
   const index = SONG_LIBRARY.findIndex((existing) => existing.id === id);
   if (index === -1) return false;
   SONG_LIBRARY.splice(index, 1);
-  await writePersistedLibrary([...SONG_LIBRARY]);
+  await persistLibrary();
   return true;
 }
 

@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import { confirmDialog } from "../lib/confirm";
+import { beginDragClickGuard, endDragClickGuard, ignoreClickAfterDrag } from "../lib/dragClick";
 import { SETLIST_DRAG_TYPE, SONG_DRAG_TYPE } from "../lib/setlist";
 import { usePresentation } from "../state/PresentationContext";
 
@@ -18,8 +18,6 @@ export default function SetlistPanel() {
     clearSetlist,
     selectSetlistEntry,
   } = usePresentation();
-  const navigate = useNavigate();
-  const creating = useLocation().pathname === "/new";
   const listRef = useRef<HTMLDivElement>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -87,6 +85,7 @@ export default function SetlistPanel() {
         onDragOver={onDragOver}
         onDragLeave={onDragLeave}
         onDrop={onDrop}
+        onClickCapture={ignoreClickAfterDrag}
         className={`min-h-0 flex-1 space-y-1 overflow-auto rounded-xl pr-1 transition ${
           dropIndex !== null ? "bg-gold-500/[0.04] ring-1 ring-gold-500/20" : ""
         }`}
@@ -110,11 +109,13 @@ export default function SetlistPanel() {
                 data-setlist-row
                 draggable
                 onDragStart={(event) => {
+                  beginDragClickGuard();
                   event.dataTransfer.setData(SETLIST_DRAG_TYPE, item.entry.id);
                   event.dataTransfer.effectAllowed = "move";
                   setDraggingId(item.entry.id);
                 }}
                 onDragEnd={() => {
+                  endDragClickGuard();
                   setDraggingId(null);
                   setDropIndex(null);
                 }}
@@ -122,10 +123,7 @@ export default function SetlistPanel() {
               >
                 <button
                   type="button"
-                  onClick={() => {
-                    selectSetlistEntry(item.entry.id);
-                    if (creating) navigate("/");
-                  }}
+                  onClick={() => selectSetlistEntry(item.entry.id)}
                   className={`flex w-full cursor-grab items-center gap-3 rounded-xl border py-2.5 pl-3 pr-9 text-left transition active:cursor-grabbing ${
                     active
                       ? "border-gold-500/40 bg-gold-500/10"

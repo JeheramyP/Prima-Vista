@@ -23,13 +23,7 @@ function hasDragType(event: DragEvent, type: string) {
 const fieldClass =
   "w-full rounded-xl border border-white/10 bg-sanctuary-950 px-3 py-2 text-sm text-stone-100 outline-none placeholder:text-stone-600 focus:border-gold-500/40 focus:ring-2 focus:ring-gold-400/15";
 
-export default function LyricEditor({
-  submitLabel = "Update slides",
-  onSubmit,
-}: {
-  submitLabel?: string;
-  onSubmit?: () => void;
-} = {}) {
+export default function LyricEditor() {
   const { draft, setDraft, applyEditor } = usePresentation();
   const listRef = useRef<HTMLDivElement>(null);
   const paletteDragged = useRef(false);
@@ -113,13 +107,10 @@ export default function LyricEditor({
         </h2>
         <button
           type="button"
-          onClick={() => {
-            if (onSubmit) onSubmit();
-            else void applyEditor();
-          }}
+          onClick={() => void applyEditor()}
           className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-1.5 text-xs font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
-          {submitLabel}
+          Update slides
         </button>
       </div>
 
