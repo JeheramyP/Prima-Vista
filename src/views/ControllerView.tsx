@@ -42,10 +42,20 @@ export default function ControllerView() {
 
       if (event.ctrlKey || event.metaKey || event.altKey) return;
 
-      if (event.code === "Space" || event.key === "ArrowRight" || event.key === "PageDown") {
+      if (
+        event.code === "Space" ||
+        event.key === "ArrowRight" ||
+        event.key === "ArrowDown" ||
+        event.key === "PageDown"
+      ) {
         event.preventDefault();
         next();
-      } else if (event.key === "ArrowLeft" || event.key === "PageUp" || event.key === "Backspace") {
+      } else if (
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowUp" ||
+        event.key === "PageUp" ||
+        event.key === "Backspace"
+      ) {
         event.preventDefault();
         prev();
       } else if (event.key === "Home") {

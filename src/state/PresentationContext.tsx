@@ -51,6 +51,8 @@ function writeDraftOntoSong(song: Song, draft: SongDraft) {
 
 type SlidePosition = "first" | "last";
 
+type ShowSongOptions = { keepScreen?: boolean };
+
 export type SetlistItem = { entry: SetlistEntry; song: Song };
 
 export type UpcomingSlide = { slide: Slide; songTitle?: string; theme: StageThemeId };
@@ -73,7 +75,7 @@ type PresentationState = {
   removeFromSetlist: (entryId: string) => void;
   moveSetlistEntry: (entryId: string, toIndex: number) => void;
   clearSetlist: () => void;
-  selectSetlistEntry: (entryId: string, position?: SlidePosition) => void;
+  selectSetlistEntry: (entryId: string, position?: SlidePosition, options?: ShowSongOptions) => void;
   setQuery: (value: string) => void;
   selectSong: (song: Song) => Promise<void>;
   createNewSong: () => void;
@@ -297,7 +299,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showSong = useCallback(
-    (song: Song, position: SlidePosition = "first") => {
+    (song: Song, position: SlidePosition = "first", options?: ShowSongOptions) => {
       flushPendingNewSong();
       const fresh = SONG_LIBRARY.find((candidate) => candidate.id === song.id) ?? song;
       selectionTouchedRef.current = true;
@@ -307,8 +309,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setDraftState(songToDraft(fresh));
       setSlides(songSlides);
       setCurrentIndex(nextIndex);
-      setClear(false);
-      setBlackout(false);
+      if (!options?.keepScreen) {
+        setClear(false);
+        setBlackout(false);
+      }
     },
     [flushPendingNewSong],
   );
@@ -328,11 +332,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   );
 
   const selectSetlistEntry = useCallback(
-    (entryId: string, position: SlidePosition = "first") => {
+    (entryId: string, position: SlidePosition = "first", options?: ShowSongOptions) => {
       const item = setlist.find((candidate) => candidate.entry.id === entryId);
       if (!item) return;
       setActiveEntryId(entryId);
-      showSong(item.song, position);
+      showSong(item.song, position, options);
     },
     [setlist, showSong],
   );
@@ -509,43 +513,25 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       if (!slides.length) return;
       const next = Math.max(0, Math.min(slides.length - 1, index));
       setCurrentIndex(next);
-      setClear(false);
-      setBlackout(false);
     },
     [slides.length],
   );
 
   const next = useCallback(() => {
-    if (blackout) {
-      setBlackout(false);
-      return;
-    }
-    if (clear) {
-      setClear(false);
-      return;
-    }
     if (currentIndex >= slides.length - 1 && nextSetlistItem) {
-      selectSetlistEntry(nextSetlistItem.entry.id, "first");
+      selectSetlistEntry(nextSetlistItem.entry.id, "first", { keepScreen: true });
       return;
     }
     goTo(currentIndex + 1);
-  }, [blackout, clear, currentIndex, goTo, nextSetlistItem, selectSetlistEntry, slides.length]);
+  }, [currentIndex, goTo, nextSetlistItem, selectSetlistEntry, slides.length]);
 
   const prev = useCallback(() => {
-    if (blackout) {
-      setBlackout(false);
-      return;
-    }
-    if (clear) {
-      setClear(false);
-      return;
-    }
     if (currentIndex <= 0 && prevSetlistItem) {
-      selectSetlistEntry(prevSetlistItem.entry.id, "last");
+      selectSetlistEntry(prevSetlistItem.entry.id, "last", { keepScreen: true });
       return;
     }
     goTo(currentIndex - 1);
-  }, [blackout, clear, currentIndex, goTo, prevSetlistItem, selectSetlistEntry]);
+  }, [currentIndex, goTo, prevSetlistItem, selectSetlistEntry]);
 
   const openPresentation = useCallback(async () => {
     await window.primaVista?.openPresentation();

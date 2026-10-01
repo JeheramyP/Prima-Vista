@@ -1,11 +1,17 @@
 # Prima Vista
 
-Desktop lyric presentation software for churches and worship gatherings. Built with Electron, React, Vite, and Tailwind CSS.
+Desktop lyric presentation software for churches, youth groups, and worship gatherings. Built with Electron, React, Vite, and Tailwind CSS.
+
+# Inspiration
+
+Italian for "at first sight," prima vista is a musical phrase meaning sight-reading. This application is meant to provide an at-a-glance overview of the whole setlist.
+
+No more guessing what comes next - review all the lyrics and make necessary edits on the fly. No more tedious Google Slides work, either. Adding songs is as easy as searching up a song from the API. Several default background themes exist to give each song an appropriate vibe. Highly customizable, easily navigable, extremely stress-free.
 
 ## What it does
 
 - **Controller window** searches a local song library, builds slides from verses and choruses, and lets you jump, edit, or preview the next cue.
-- **Output window** is a frameless, high-contrast stage display meant to drag onto a projector or second monitor.
+- **Output window** is a frameless, high-contrast stage display meant to be dragged onto a projector or second monitor.
 - **Electron IPC** keeps the live slide in sync between the two windows.
 
 ## Run locally
