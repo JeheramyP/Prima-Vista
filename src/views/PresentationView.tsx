@@ -1,5 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
+  buildCustomTheme,
+  isCustomThemeRecord,
   songThemeId,
   stageLyricStyle,
   stageMutedColor,
@@ -39,7 +41,13 @@ const EMPTY: SlidePayload = {
 
 export default function PresentationView() {
   const [slide, setSlide] = useState<SlidePayload>(EMPTY);
-  const theme = stageThemeById(songThemeId(slide));
+  const theme = useMemo(
+    () =>
+      slide.customTheme && isCustomThemeRecord(slide.customTheme)
+        ? buildCustomTheme(slide.customTheme)
+        : stageThemeById(songThemeId(slide)),
+    [slide],
+  );
   const [fontSizePx, setFontSizePx] = useState(MIN_FONT_PX);
   const stageRef = useRef<HTMLDivElement>(null);
 

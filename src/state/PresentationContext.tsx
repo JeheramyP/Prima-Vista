@@ -12,7 +12,14 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { songThemeId, type StageThemeId } from "../lib/stageThemes";
+import { songThemeId, type CustomThemeRecord, type StageThemeId } from "../lib/stageThemes";
+import {
+  CUSTOM_THEMES,
+  customThemeRecord,
+  deleteCustomTheme as deleteCustomThemeFromLibrary,
+  loadCustomThemes,
+  saveCustomTheme,
+} from "../lib/customThemes";
 import { draftToSong, EMPTY_DRAFT, songToDraft, songToSlides } from "../lib/slides";
 import {
   deleteSong as deleteSongFromLibrary,
@@ -61,6 +68,7 @@ type PresentationState = {
   query: string;
   results: Song[];
   searching: boolean;
+  updatingSlides: boolean;
   activeSong: Song | null;
   draft: SongDraft;
   slides: Slide[];
@@ -83,6 +91,10 @@ type PresentationState = {
   setDraft: Dispatch<SetStateAction<SongDraft>>;
   applyEditor: () => Promise<void>;
   setSongTheme: (theme: StageThemeId) => void;
+  customThemes: CustomThemeRecord[];
+  /** Saves the theme and applies it to the selected song. */
+  addCustomTheme: (theme: CustomThemeRecord) => void;
+  deleteCustomTheme: (id: string) => void;
   goTo: (index: number) => void;
   next: () => void;
   prev: () => void;
@@ -99,6 +111,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Song[]>(SONG_LIBRARY);
   const [searching, setSearching] = useState(false);
+  const [updatingSlides, setUpdatingSlides] = useState(false);
   const [activeSong, setActiveSong] = useState<Song | null>(SONG_LIBRARY[0] ?? null);
   const [draft, setDraftState] = useState<SongDraft>(
     SONG_LIBRARY[0] ? songToDraft(SONG_LIBRARY[0]) : EMPTY_DRAFT,
@@ -115,6 +128,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [libraryReady, setLibraryReady] = useState(false);
   const [setlistEntries, setSetlistEntries] = useState<SetlistEntry[]>(loadSetlist);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [customThemes, setCustomThemes] = useState<CustomThemeRecord[]>([]);
   const activeSongRef = useRef(activeSong);
   activeSongRef.current = activeSong;
   const draftRef = useRef(draft);
@@ -129,6 +143,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const pendingNewIdRef = useRef<string | null>(null);
   const mirroredNewIdsRef = useRef<Set<string>>(new Set());
   const persistTimerRef = useRef<number | null>(null);
+  const updatingSlidesTimerRef = useRef<number | null>(null);
   const setDraft = useCallback<Dispatch<SetStateAction<SongDraft>>>((value) => {
     selectionTouchedRef.current = true;
     setDraftState(value);
@@ -226,6 +241,19 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    void loadCustomThemes().then((themes) => {
+      if (!cancelled) setCustomThemes(themes);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const queryRef = useRef(query);
+  queryRef.current = query;
+
+  useEffect(() => {
     if (!libraryReady) return;
     let cancelled = false;
     setSearching(true);
@@ -240,7 +268,29 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [query, libraryVersion, libraryReady]);
+  }, [query, libraryReady]);
+
+  useEffect(() => {
+    if (!libraryReady) return;
+    let cancelled = false;
+    const handle = window.setTimeout(async () => {
+      const songs = await searchSongs(queryRef.current);
+      if (!cancelled) setResults(songs);
+    }, 120);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(handle);
+    };
+  }, [libraryVersion, libraryReady]);
+
+  useEffect(
+    () => () => {
+      if (updatingSlidesTimerRef.current !== null) {
+        window.clearTimeout(updatingSlidesTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useLayoutEffect(() => {
     const id = activeSong?.id;
@@ -283,9 +333,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       blackout,
       clear,
       theme: songThemeId(activeSong),
+      customTheme: customThemeRecord(songThemeId(activeSong)),
       titleSlide: currentSlide?.titleSlide ?? false,
     }),
-    [activeSong, currentSlide, currentIndex, slides.length, blackout, clear, draftRevision],
+    [activeSong, currentSlide, currentIndex, slides.length, blackout, clear, draftRevision, customThemes],
   );
 
   useEffect(() => {
@@ -387,7 +438,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     return first
       ? { slide: first, songTitle: nextSetlistItem.song.title, theme: songThemeId(nextSetlistItem.song) }
       : null;
-  }, [activeSong, slides, currentIndex, nextSetlistItem]);
+  }, [activeSong, slides, currentIndex, nextSetlistItem, customThemes]);
 
   const adoptSong = useCallback((song: Song) => {
     pendingNewIdRef.current = song.id;
@@ -488,24 +539,54 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     });
   }, [activeSong]);
 
+  const addCustomTheme = useCallback(
+    (theme: CustomThemeRecord) => {
+      const updating = CUSTOM_THEMES.some((item) => item.id === theme.id);
+      // The theme is registered synchronously, before the write finishes.
+      void saveCustomTheme(theme);
+      setCustomThemes([...CUSTOM_THEMES]);
+      if (!updating) setSongTheme(theme.id);
+    },
+    [setSongTheme],
+  );
+
+  const deleteCustomTheme = useCallback((id: string) => {
+    void deleteCustomThemeFromLibrary(id);
+    setCustomThemes([...CUSTOM_THEMES]);
+  }, []);
+
   const applyEditor = useCallback(async () => {
-    const nextSong = draftToSong(activeSong?.id ?? `custom-${Date.now()}`, draft);
-    if (activeSong?.theme) nextSong.theme = activeSong.theme;
-    const nextSlides = songToSlides(nextSong);
-    const previousSlides = slidesRef.current;
-    const previousIndex = currentIndexRef.current;
-    const previousId = previousSlides[previousIndex]?.id;
-    const matched = previousId ? nextSlides.findIndex((slide) => slide.id === previousId) : -1;
-    const nextIndex =
-      matched !== -1
-        ? matched
-        : Math.min(previousIndex, Math.max(0, nextSlides.length - 1));
-    setActiveSong(nextSong);
-    setDraftState(songToDraft(nextSong));
-    setSlides(nextSlides);
-    setCurrentIndex(nextIndex);
-    await saveSong(nextSong);
-    setLibraryVersion((version) => version + 1);
+    if (updatingSlidesTimerRef.current !== null) {
+      window.clearTimeout(updatingSlidesTimerRef.current);
+      updatingSlidesTimerRef.current = null;
+    }
+    setUpdatingSlides(true);
+    const startedAt = Date.now();
+    try {
+      const nextSong = draftToSong(activeSong?.id ?? `custom-${Date.now()}`, draft);
+      if (activeSong?.theme) nextSong.theme = activeSong.theme;
+      const nextSlides = songToSlides(nextSong);
+      const previousSlides = slidesRef.current;
+      const previousIndex = currentIndexRef.current;
+      const previousId = previousSlides[previousIndex]?.id;
+      const matched = previousId ? nextSlides.findIndex((slide) => slide.id === previousId) : -1;
+      const nextIndex =
+        matched !== -1
+          ? matched
+          : Math.min(previousIndex, Math.max(0, nextSlides.length - 1));
+      setActiveSong(nextSong);
+      setDraftState(songToDraft(nextSong));
+      setSlides(nextSlides);
+      setCurrentIndex(nextIndex);
+      await saveSong(nextSong);
+      setLibraryVersion((version) => version + 1);
+    } finally {
+      const remaining = Math.max(0, 700 - (Date.now() - startedAt));
+      updatingSlidesTimerRef.current = window.setTimeout(() => {
+        updatingSlidesTimerRef.current = null;
+        setUpdatingSlides(false);
+      }, remaining);
+    }
   }, [activeSong, draft]);
 
   const goTo = useCallback(
@@ -553,6 +634,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       query,
       results,
       searching,
+      updatingSlides,
       activeSong,
       draft,
       slides,
@@ -575,6 +657,9 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setDraft,
       applyEditor,
       setSongTheme,
+      customThemes,
+      addCustomTheme,
+      deleteCustomTheme,
       goTo,
       next,
       prev,
@@ -588,6 +673,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       query,
       results,
       searching,
+      updatingSlides,
       activeSong,
       draft,
       slides,
@@ -609,6 +695,9 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setDraft,
       applyEditor,
       setSongTheme,
+      customThemes,
+      addCustomTheme,
+      deleteCustomTheme,
       goTo,
       next,
       prev,

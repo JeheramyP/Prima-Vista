@@ -1,4 +1,4 @@
-import type { StageThemeId } from "./lib/stageThemes";
+import type { CustomThemeRecord, StageThemeId } from "./lib/stageThemes";
 
 export type SectionKind =
   | "verse"
@@ -15,6 +15,8 @@ export type LyricSection = {
   id: string;
   kind: SectionKind;
   label: string;
+  /** 1-based. Sections with the same kind and number are the same part, such as Chorus 2 sung twice. */
+  number?: number;
   lines: string[];
 };
 
@@ -62,6 +64,8 @@ export type SlidePayload = {
   blackout: boolean;
   clear: boolean;
   theme: StageThemeId;
+  /** Definition of `theme` when it is user-made, since the output window has no theme library. */
+  customTheme?: CustomThemeRecord;
   /** Stage layout: large title, author in the lower right. */
   titleSlide?: boolean;
 };
@@ -76,6 +80,8 @@ export type PrimaVistaAPI = {
   onPresentationClosed: (callback: () => void) => () => void;
   loadSongs: () => Promise<Song[] | null>;
   saveSongs: (songs: Song[]) => Promise<boolean>;
+  loadThemes: () => Promise<CustomThemeRecord[] | null>;
+  saveThemes: (themes: CustomThemeRecord[]) => Promise<boolean>;
   restoreWindowFocus: () => void;
 };
 

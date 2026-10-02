@@ -36,4 +36,6 @@ The controller opens first. Use **Open output** to spawn the presentation window
 
 The editor builds a song from sections. Drag **Verse**, **Chorus**, **Bridge**, **Instrumental**, or **Tag** into the arrangement, reorder them by the handle, and type lyrics on each card. **Update slides** applies the arrangement. Each pair of lines becomes one slide.
 
+Switch the editor to **Copy-paste** to paste a whole song at once. Blank lines (or headers like `[Verse 1]`) split the lyrics into blocks. Drag blocks into the roadmap on the right in the order they are sung: each block takes the next pasted paragraph. Every section has a number picker (Chorus 1, Chorus 2, and so on) in both editors, and that label carries through to the slides. In the roadmap, giving a block the same number as an earlier one reuses its lyrics instead of taking a new paragraph.
+
 Songs currently load from a mock library in `src/lib/songs.ts`. Swap `searchSongs` for a remote lyrics API when you are ready.

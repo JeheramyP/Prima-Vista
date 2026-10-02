@@ -30,6 +30,7 @@ type SlidePayload = {
   blackout: boolean;
   clear: boolean;
   theme?: string;
+  customTheme?: unknown;
   titleSlide?: boolean;
 };
 
@@ -82,6 +83,30 @@ async function writeLibraryFile(songs: SongRecord[]) {
   const file = libraryPath();
   await fs.mkdir(path.dirname(file), { recursive: true });
   await fs.writeFile(file, JSON.stringify(songs, null, 2), "utf8");
+}
+
+function themesPath() {
+  return path.join(app.getPath("userData"), "custom-themes.json");
+}
+
+/** Records are validated in the renderer, which owns the theme format. */
+async function readThemesFile(): Promise<unknown[] | null> {
+  try {
+    const raw = await fs.readFile(themesPath(), "utf8");
+    const parsed = JSON.parse(raw) as unknown;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "ENOENT") return null;
+    console.error("Failed to read custom themes:", error);
+    return null;
+  }
+}
+
+async function writeThemesFile(themes: unknown[]) {
+  const file = themesPath();
+  await fs.mkdir(path.dirname(file), { recursive: true });
+  await fs.writeFile(file, JSON.stringify(themes, null, 2), "utf8");
 }
 
 function rendererUrl(hash = "") {
@@ -210,6 +235,16 @@ app.whenReady().then(() => {
   ipcMain.handle("songs:save", async (_event, songs: SongRecord[]) => {
     if (!Array.isArray(songs)) return false;
     await writeLibraryFile(songs);
+    return true;
+  });
+
+  ipcMain.handle("themes:load", async () => {
+    return readThemesFile();
+  });
+
+  ipcMain.handle("themes:save", async (_event, themes: unknown[]) => {
+    if (!Array.isArray(themes)) return false;
+    await writeThemesFile(themes);
     return true;
   });
 

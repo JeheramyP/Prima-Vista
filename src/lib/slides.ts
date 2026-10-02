@@ -34,7 +34,7 @@ export const EMPTY_DRAFT: SongDraft = {
 
 export function sectionsToSlides(sections: LyricSection[]): Slide[] {
   const slides: Slide[] = [];
-  sections.forEach((section) => {
+  withSectionLabels(sections).forEach((section) => {
     const chunks = chunkLines(section.lines, LINES_PER_SLIDE);
     chunks.forEach((lines, chunkIndex) => {
       slides.push({
@@ -101,26 +101,70 @@ export function isPaletteKind(value: string): value is SectionKind {
   return SECTION_PALETTE.some((item) => item.kind === value);
 }
 
-export function displayLabel(kind: SectionKind, index: number, total: number): string {
+const ALWAYS_NUMBERED: SectionKind[] = ["verse", "chorus", "other"];
+
+export function kindName(kind: SectionKind) {
+  return KIND_NAME[kind];
+}
+
+/** `partsOfKind` counts distinct numbers, so a lone bridge reads "Bridge" but choruses always carry a number. */
+export function displayLabel(kind: SectionKind, number: number, partsOfKind: number): string {
   const name = KIND_NAME[kind];
-  if (kind === "verse" || kind === "other" || total > 1) return `${name} ${index + 1}`;
+  if (ALWAYS_NUMBERED.includes(kind) || partsOfKind > 1) return `${name} ${number}`;
   return name;
 }
 
+/**
+ * Fills in missing numbers and recomputes labels. Older songs have no numbers:
+ * sections of a kind with identical lyrics share a number, others count up.
+ */
 export function withSectionLabels(sections: LyricSection[]): LyricSection[] {
-  const totals = new Map<SectionKind, number>();
+  const used = new Map<SectionKind, Set<number>>();
   for (const section of sections) {
-    totals.set(section.kind, (totals.get(section.kind) ?? 0) + 1);
+    if (section.number === undefined) continue;
+    const set = used.get(section.kind) ?? new Set<number>();
+    set.add(section.number);
+    used.set(section.kind, set);
   }
-  const seen = new Map<SectionKind, number>();
-  return sections.map((section) => {
-    const index = seen.get(section.kind) ?? 0;
-    seen.set(section.kind, index + 1);
-    return {
-      ...section,
-      label: displayLabel(section.kind, index, totals.get(section.kind) ?? 1),
-    };
+  const byLyrics = new Map<string, number>();
+  const numbered = sections.map((section) => {
+    if (section.number !== undefined) return section;
+    const set = used.get(section.kind) ?? new Set<number>();
+    used.set(section.kind, set);
+    const lyrics = section.lines.map((line) => line.trim()).filter(Boolean).join("\n");
+    const key = `${section.kind}\n${lyrics}`;
+    let number = lyrics ? byLyrics.get(key) : undefined;
+    if (number === undefined) {
+      number = 1;
+      while (set.has(number)) number += 1;
+      set.add(number);
+      if (lyrics) byLyrics.set(key, number);
+    }
+    return { ...section, number };
   });
+  return numbered.map((section) => ({
+    ...section,
+    label: displayLabel(section.kind, section.number!, used.get(section.kind)?.size ?? 1),
+  }));
+}
+
+/** Numbers offered for a section: every number in use for its kind, plus the next new one. */
+export function sectionNumberOptions(
+  sections: { kind: SectionKind; number?: number }[],
+  kind: SectionKind,
+) {
+  const max = sections.reduce(
+    (highest, section) =>
+      section.kind === kind && section.number !== undefined
+        ? Math.max(highest, section.number)
+        : highest,
+    0,
+  );
+  return Array.from({ length: max + 1 }, (_, index) => index + 1);
+}
+
+export function nextSectionNumber(sections: LyricSection[], kind: SectionKind) {
+  return sectionNumberOptions(withSectionLabels(sections), kind).length;
 }
 
 export function cleanSectionLines(sections: LyricSection[]): LyricSection[] {
@@ -135,7 +179,7 @@ export function songToDraft(song: Song): SongDraft {
     title: song.title,
     artist: song.artist,
     key: song.key ?? "",
-    sections: song.sections.map((section) => ({
+    sections: withSectionLabels(song.sections).map((section) => ({
       ...section,
       lines: [...section.lines],
     })),
@@ -153,11 +197,12 @@ export function draftToSong(id: string, draft: SongDraft): Song {
   };
 }
 
-export function createSection(kind: SectionKind): LyricSection {
+export function createSection(kind: SectionKind, number = 1): LyricSection {
   return {
     id: `sec-${crypto.randomUUID()}`,
     kind,
-    label: displayLabel(kind, 0, 1),
+    label: displayLabel(kind, number, 1),
+    number,
     lines: [],
   };
 }
@@ -182,9 +227,9 @@ export function moveSections(sections: LyricSection[], from: number, toIndex: nu
 export function duplicateSection(sections: LyricSection[], id: string) {
   const index = sections.findIndex((section) => section.id === id);
   if (index === -1) return sections;
-  const source = sections[index];
+  const source = withSectionLabels(sections)[index];
   const copy: LyricSection = {
-    ...createSection(source.kind),
+    ...createSection(source.kind, source.number),
     lines: [...source.lines],
   };
   return insertSection(sections, index + 1, copy);

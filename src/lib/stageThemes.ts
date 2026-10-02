@@ -192,12 +192,123 @@ export const STAGE_THEMES: StageTheme[] = [
 
 export type StageThemeId = (typeof STAGE_THEMES)[number]["id"];
 
+export type CustomFill = "solid" | "linear" | "radial" | "glow";
+
+/** A user-made background. Saved to disk and turned into a full StageTheme on load. */
+export type CustomThemeRecord = {
+  id: string;
+  name: string;
+  fill: CustomFill;
+  /** Hex colors. Solid uses the first; glow uses base then glow color. */
+  colors: string[];
+  /** Linear gradient direction in degrees. */
+  angle: number;
+};
+
+export const CUSTOM_FILLS: { id: CustomFill; label: string; stops: [min: number, max: number] }[] = [
+  { id: "solid", label: "Solid", stops: [1, 1] },
+  { id: "linear", label: "Linear", stops: [2, 3] },
+  { id: "radial", label: "Radial", stops: [2, 3] },
+  { id: "glow", label: "Glow", stops: [2, 2] },
+];
+
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+
+export function isCustomThemeRecord(value: unknown): value is CustomThemeRecord {
+  if (!value || typeof value !== "object") return false;
+  const record = value as CustomThemeRecord;
+  return (
+    typeof record.id === "string" &&
+    typeof record.name === "string" &&
+    CUSTOM_FILLS.some((fill) => fill.id === record.fill) &&
+    Array.isArray(record.colors) &&
+    record.colors.length > 0 &&
+    record.colors.every((color) => typeof color === "string" && HEX_COLOR.test(color)) &&
+    typeof record.angle === "number"
+  );
+}
+
+function hexToRgb(hex: string) {
+  const value = Number.parseInt(hex.slice(1), 16);
+  return { r: (value >> 16) & 255, g: (value >> 8) & 255, b: value & 255 };
+}
+
+function luminance(hex: string) {
+  const { r, g, b } = hexToRgb(hex);
+  const channel = (c: number) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function rgba(hex: string, alpha: number) {
+  const { r, g, b } = hexToRgb(hex);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+export function customBackground(record: Pick<CustomThemeRecord, "fill" | "colors" | "angle">) {
+  const [first, second = first] = record.colors;
+  const stops = record.colors.join(", ");
+  switch (record.fill) {
+    case "solid":
+      return first;
+    case "linear":
+      return `linear-gradient(${record.angle}deg, ${stops})`;
+    case "radial":
+      return `radial-gradient(ellipse 120% 110% at 50% 45%, ${stops})`;
+    case "glow":
+      return `radial-gradient(ellipse 80% 75% at 50% 115%, ${rgba(second, 0.45)}, transparent 70%), radial-gradient(ellipse 65% 55% at 50% -10%, ${rgba(second, 0.14)}, transparent 65%), ${first}`;
+  }
+}
+
+/** Small-swatch version of a custom background. */
+export function customChip(record: Pick<CustomThemeRecord, "fill" | "colors" | "angle">) {
+  const [first, second = first] = record.colors;
+  if (record.fill === "glow") return `radial-gradient(circle at 50% 100%, ${second}, ${first} 75%)`;
+  return customBackground(record);
+}
+
+export function buildCustomTheme(record: CustomThemeRecord): StageTheme {
+  // Glow backgrounds are mostly the base color, so only that decides the text color.
+  const sampled = record.fill === "glow" ? record.colors.slice(0, 1) : record.colors;
+  const average = sampled.reduce((sum, color) => sum + luminance(color), 0) / sampled.length;
+  const light = average > 0.4;
+  return {
+    id: record.id,
+    name: record.name,
+    blurb: "Custom background",
+    chip: customChip(record),
+    background: customBackground(record),
+    color: light ? "#14100c" : "#ffffff",
+    fontFamily: FRAUNCES,
+    fontWeight: 500,
+    letterSpacing: "0.025em",
+    lineHeight: 1.24,
+    shadow: light ? "none" : "drop-shadow(0 6px 22px rgba(0, 0, 0, 0.6))",
+    sizeScale: 1,
+    light,
+  };
+}
+
+const customThemes = new Map<string, StageTheme>();
+
+/** Replaces the custom themes that stageThemeById and songThemeId can resolve. */
+export function registerCustomThemes(records: CustomThemeRecord[]) {
+  customThemes.clear();
+  for (const record of records) customThemes.set(record.id, buildCustomTheme(record));
+}
+
+export function isDefaultThemeId(id: string) {
+  return STAGE_THEMES.some((theme) => theme.id === id);
+}
+
 export function isStageThemeId(value: unknown): value is StageThemeId {
-  return typeof value === "string" && STAGE_THEMES.some((theme) => theme.id === value);
+  return typeof value === "string" && (isDefaultThemeId(value) || customThemes.has(value));
 }
 
 export function stageThemeById(id: StageThemeId): StageTheme {
-  return STAGE_THEMES.find((theme) => theme.id === id) ?? STAGE_THEMES[0];
+  return STAGE_THEMES.find((theme) => theme.id === id) ?? customThemes.get(id) ?? STAGE_THEMES[0];
 }
 
 /** Songs without a saved theme use the original Sanctuary look. */

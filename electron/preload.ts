@@ -10,6 +10,7 @@ export type SlidePayload = {
   blackout: boolean;
   clear: boolean;
   theme?: string;
+  customTheme?: unknown;
   titleSlide?: boolean;
 };
 
@@ -41,5 +42,8 @@ contextBridge.exposeInMainWorld("primaVista", {
   loadSongs: () => ipcRenderer.invoke("songs:load") as Promise<SongRecord[] | null>,
   saveSongs: (songs: SongRecord[]) =>
     ipcRenderer.invoke("songs:save", songs) as Promise<boolean>,
+  loadThemes: () => ipcRenderer.invoke("themes:load") as Promise<unknown[] | null>,
+  saveThemes: (themes: unknown[]) =>
+    ipcRenderer.invoke("themes:save", themes) as Promise<boolean>,
   restoreWindowFocus: () => ipcRenderer.send("window:focus-fix"),
 });

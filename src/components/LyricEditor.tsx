@@ -10,10 +10,14 @@ import {
   isPaletteKind,
   kindTone,
   moveSections,
+  nextSectionNumber,
+  sectionNumberOptions,
   slideCount,
   withSectionLabels,
 } from "../lib/slides";
 import { usePresentation } from "../state/PresentationContext";
+import PasteLyricsMode from "./PasteLyricsMode";
+import SectionNumberSelect from "./SectionNumberSelect";
 import type { LyricSection, SectionKind } from "../types";
 
 function hasDragType(event: DragEvent, type: string) {
@@ -23,8 +27,38 @@ function hasDragType(event: DragEvent, type: string) {
 const fieldClass =
   "w-full rounded-xl border border-white/10 bg-sanctuary-950 px-3 py-2 text-sm text-stone-100 outline-none placeholder:text-stone-600 focus:border-gold-500/40 focus:ring-2 focus:ring-gold-400/15";
 
+function SlideUpdateSpinner() {
+  return (
+    <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle className="opacity-25" cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" />
+      <path
+        className="opacity-90"
+        d="M21 12a9 9 0 0 0-9-9"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+type EditorMode = "sections" | "paste";
+
+const EDITOR_MODES: { mode: EditorMode; name: string }[] = [
+  { mode: "sections", name: "Sections" },
+  { mode: "paste", name: "Copy-paste" },
+];
+
+/** Survives the editor unmounting when the Slides tab is shown. */
+let lastMode: EditorMode = "sections";
+
 export default function LyricEditor() {
-  const { draft, setDraft, applyEditor } = usePresentation();
+  const { draft, setDraft, applyEditor, updatingSlides } = usePresentation();
+  const [mode, setMode] = useState<EditorMode>(lastMode);
+  const changeMode = (next: EditorMode) => {
+    lastMode = next;
+    setMode(next);
+  };
   const listRef = useRef<HTMLDivElement>(null);
   const paletteDragged = useRef(false);
   const focusId = useRef<string | null>(null);
@@ -43,7 +77,7 @@ export default function LyricEditor() {
   }, [draft.sections]);
 
   const addSection = (kind: SectionKind, index = draft.sections.length, focus = false) => {
-    const section = createSection(kind);
+    const section = createSection(kind, nextSectionNumber(draft.sections, kind));
     if (focus) focusId.current = section.id;
     setDraft((current) => ({
       ...current,
@@ -88,7 +122,11 @@ export default function LyricEditor() {
       if (isPaletteKind(kind)) {
         return {
           ...current,
-          sections: insertSection(current.sections, index, createSection(kind)),
+          sections: insertSection(
+            current.sections,
+            index,
+            createSection(kind, nextSectionNumber(current.sections, kind)),
+          ),
         };
       }
       return current;
@@ -101,16 +139,40 @@ export default function LyricEditor() {
 
   return (
     <section className="flex flex-col">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 flex items-center gap-3">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Lyric editor
         </h2>
+        <div
+          role="radiogroup"
+          aria-label="Editor mode"
+          className="flex rounded-full border border-white/10 bg-white/5 p-0.5"
+        >
+          {EDITOR_MODES.map((item) => (
+            <button
+              key={item.mode}
+              type="button"
+              role="radio"
+              aria-checked={mode === item.mode}
+              onClick={() => changeMode(item.mode)}
+              className={`rounded-full px-3 py-1 text-[11px] font-medium transition ${
+                mode === item.mode
+                  ? "bg-white text-sanctuary-950"
+                  : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              {item.name}
+            </button>
+          ))}
+        </div>
         <button
           type="button"
           onClick={() => void applyEditor()}
-          className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-1.5 text-xs font-medium text-gold-200 transition hover:bg-gold-500/20"
+          aria-busy={updatingSlides}
+          className="ml-auto inline-flex items-center gap-2 rounded-lg border border-gold-500/30 bg-gold-500/10 px-3 py-1.5 text-xs font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
-          Update slides
+          {updatingSlides ? <SlideUpdateSpinner /> : null}
+          <span>{updatingSlides ? "Updating slides" : "Update slides"}</span>
         </button>
       </div>
 
@@ -151,118 +213,141 @@ export default function LyricEditor() {
         </label>
       </div>
 
-      <div className="mb-3">
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-          Add section
-        </p>
-        <div className="flex flex-wrap gap-2">
-          {SECTION_PALETTE.map((item) => (
-            <button
-              key={item.kind}
-              type="button"
-              draggable
-              title={`Drag to place a ${item.name.toLowerCase()}, or click to add it`}
-              onDragStart={(event) => {
-                paletteDragged.current = true;
-                event.dataTransfer.setData(SECTION_KIND_DRAG_TYPE, item.kind);
-                event.dataTransfer.effectAllowed = "copy";
-                setDraggingId(`palette:${item.kind}`);
-              }}
-              onDragEnd={() => {
-                window.setTimeout(() => {
-                  paletteDragged.current = false;
-                }, 0);
-                setDraggingId(null);
-                setDropIndex(null);
-              }}
-              onClick={() => {
-                if (paletteDragged.current) {
-                  paletteDragged.current = false;
-                  return;
-                }
-                addSection(item.kind, draft.sections.length, true);
-              }}
-              className={`cursor-grab rounded-full border px-3 py-1 text-xs font-medium transition active:cursor-grabbing ${kindTone(item.kind)} ${
-                draggingId === `palette:${item.kind}` ? "opacity-40" : "hover:brightness-125"
-              }`}
-            >
-              {item.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div
-        ref={listRef}
-        onDragOver={onDragOver}
-        onDragLeave={onDragLeave}
-        onDrop={onDrop}
-        className={`space-y-2 rounded-2xl pr-1 transition ${
-          dropIndex !== null ? "bg-gold-500/[0.04] ring-1 ring-gold-500/20" : ""
-        }`}
-      >
-        {sections.length === 0 && (
-          <p
-            className={`rounded-2xl border border-dashed px-4 py-10 text-center text-sm leading-relaxed ${
-              dropIndex !== null
-                ? "border-gold-400/50 text-gold-200"
-                : "border-white/10 text-stone-500"
-            }`}
-          >
-            Drag a verse, chorus, bridge, instrumental, or tag here to start the song.
+      {mode === "paste" ? (
+        <>
+          <PasteLyricsMode />
+          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+            A title slide is added automatically. Each block takes the next paragraph of the lyrics
+            in roadmap order. A block numbered like an earlier one, such as a second Chorus 1, reuses
+            its lyrics instead. Every two lyric lines become one slide.
           </p>
-        )}
-        {sections.map((section, index) => (
-          <div key={section.id}>
-            {dropIndex === index && dropMarker}
-            <div
-              data-section-row
-              data-section-id={section.id}
-              className={draggingId === section.id ? "opacity-40" : ""}
-            >
-              <SectionCard
-                section={section}
-                onDragStart={(event) => {
-                  event.dataTransfer.setData(SECTION_ID_DRAG_TYPE, section.id);
-                  event.dataTransfer.effectAllowed = "move";
-                  setDraggingId(section.id);
-                }}
-                onDragEnd={() => {
-                  setDraggingId(null);
-                  setDropIndex(null);
-                }}
-                onLinesChange={(value) =>
-                  setDraft((current) => ({
-                    ...current,
-                    sections: current.sections.map((item) =>
-                      item.id === section.id ? { ...item, lines: value.split("\n") } : item,
-                    ),
-                  }))
-                }
-                onDuplicate={() =>
-                  setDraft((current) => ({
-                    ...current,
-                    sections: duplicateSection(current.sections, section.id),
-                  }))
-                }
-                onRemove={() => {
-                  const filled = section.lines.some((line) => line.trim());
-                  if (filled && !confirmDialog(`Remove ${section.label}?`)) return;
-                  setDraft((current) => ({
-                    ...current,
-                    sections: current.sections.filter((item) => item.id !== section.id),
-                  }));
-                }}
-              />
+        </>
+      ) : (
+        <>
+          <div className="mb-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+              Add section
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {SECTION_PALETTE.map((item) => (
+                <button
+                  key={item.kind}
+                  type="button"
+                  draggable
+                  title={`Drag to place a ${item.name.toLowerCase()}, or click to add it`}
+                  onDragStart={(event) => {
+                    paletteDragged.current = true;
+                    event.dataTransfer.setData(SECTION_KIND_DRAG_TYPE, item.kind);
+                    event.dataTransfer.effectAllowed = "copy";
+                    setDraggingId(`palette:${item.kind}`);
+                  }}
+                  onDragEnd={() => {
+                    window.setTimeout(() => {
+                      paletteDragged.current = false;
+                    }, 0);
+                    setDraggingId(null);
+                    setDropIndex(null);
+                  }}
+                  onClick={() => {
+                    if (paletteDragged.current) {
+                      paletteDragged.current = false;
+                      return;
+                    }
+                    addSection(item.kind, draft.sections.length, true);
+                  }}
+                  className={`cursor-grab rounded-full border px-3 py-1 text-xs font-medium transition active:cursor-grabbing ${kindTone(item.kind)} ${
+                    draggingId === `palette:${item.kind}` ? "opacity-40" : "hover:brightness-125"
+                  }`}
+                >
+                  {item.name}
+                </button>
+              ))}
             </div>
           </div>
-        ))}
-        {sections.length > 0 && dropIndex === sections.length && dropMarker}
-      </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
-        A title slide is added automatically. Drag a block into the song, or click one to add it.
-        Drag a card handle to reorder. Every two lyric lines become one slide.
-      </p>
+
+          <div
+            ref={listRef}
+            onDragOver={onDragOver}
+            onDragLeave={onDragLeave}
+            onDrop={onDrop}
+            className={`space-y-2 rounded-2xl pr-1 transition ${
+              dropIndex !== null ? "bg-gold-500/[0.04] ring-1 ring-gold-500/20" : ""
+            }`}
+          >
+            {sections.length === 0 && (
+              <p
+                className={`rounded-2xl border border-dashed px-4 py-10 text-center text-sm leading-relaxed ${
+                  dropIndex !== null
+                    ? "border-gold-400/50 text-gold-200"
+                    : "border-white/10 text-stone-500"
+                }`}
+              >
+                Drag a verse, chorus, bridge, instrumental, or tag here to start the song.
+              </p>
+            )}
+            {sections.map((section, index) => (
+              <div key={section.id}>
+                {dropIndex === index && dropMarker}
+                <div
+                  data-section-row
+                  data-section-id={section.id}
+                  className={draggingId === section.id ? "opacity-40" : ""}
+                >
+                  <SectionCard
+                    section={section}
+                    numberOptions={sectionNumberOptions(sections, section.kind)}
+                    onNumberChange={(number) =>
+                      setDraft((current) => ({
+                        ...current,
+                        sections: current.sections.map((item) =>
+                          item.id === section.id ? { ...item, number } : item,
+                        ),
+                      }))
+                    }
+                    onDragStart={(event) => {
+                      event.dataTransfer.setData(SECTION_ID_DRAG_TYPE, section.id);
+                      event.dataTransfer.effectAllowed = "move";
+                      setDraggingId(section.id);
+                    }}
+                    onDragEnd={() => {
+                      setDraggingId(null);
+                      setDropIndex(null);
+                    }}
+                    onLinesChange={(value) =>
+                      setDraft((current) => ({
+                        ...current,
+                        sections: current.sections.map((item) =>
+                          item.id === section.id ? { ...item, lines: value.split("\n") } : item,
+                        ),
+                      }))
+                    }
+                    onDuplicate={() =>
+                      setDraft((current) => ({
+                        ...current,
+                        sections: duplicateSection(current.sections, section.id),
+                      }))
+                    }
+                    onRemove={() => {
+                      const filled = section.lines.some((line) => line.trim());
+                      if (filled && !confirmDialog(`Remove ${section.label}?`)) return;
+                      setDraft((current) => ({
+                        ...current,
+                        sections: current.sections.filter((item) => item.id !== section.id),
+                      }));
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            {sections.length > 0 && dropIndex === sections.length && dropMarker}
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+            A title slide is added automatically. Drag a block into the song, or click one to add
+            it. Drag a card handle to reorder. Use the number next to a section name to label it
+            Chorus 1, Chorus 2, and so on. Every two lyric lines become one slide.
+          </p>
+        </>
+      )}
     </section>
   );
 }
@@ -274,11 +359,15 @@ function SectionCard({
   onLinesChange,
   onDuplicate,
   onRemove,
+  numberOptions,
+  onNumberChange,
 }: {
   section: LyricSection;
   onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
   onDragEnd: () => void;
   onLinesChange: (value: string) => void;
+  numberOptions: number[];
+  onNumberChange: (number: number) => void;
   onDuplicate: () => void;
   onRemove: () => void;
 }) {
@@ -312,11 +401,12 @@ function SectionCard({
             <circle cx="13" cy="15" r="1.15" />
           </svg>
         </button>
-        <span
-          className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${kindTone(section.kind)}`}
-        >
-          {section.label}
-        </span>
+        <SectionNumberSelect
+          kind={section.kind}
+          value={section.number ?? 1}
+          options={numberOptions}
+          onChange={onNumberChange}
+        />
         <span className="text-[11px] text-stone-500">{countLabel}</span>
         <div className="ml-auto flex items-center gap-1">
           <button
