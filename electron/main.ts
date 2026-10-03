@@ -103,9 +103,7 @@ async function readThemesFile(): Promise<unknown[] | null> {
 }
 
 async function writeThemesFile(themes: unknown[]) {
-  const file = themesPath();
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, JSON.stringify(themes, null, 2), "utf8");
+  await writeJsonAtomic(themesPath(), themes);
 }
 
 function rendererUrl(hash = "") {
