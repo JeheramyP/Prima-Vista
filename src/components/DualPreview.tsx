@@ -1,7 +1,7 @@
+import FittedLyrics, { LYRIC_STAGE_INSET, StageTitle } from "./FittedLyrics";
 import {
   songThemeId,
   stageEdgeColor,
-  stageLyricStyle,
   stageMutedColor,
   stageSurfaceStyle,
   stageThemeById,
@@ -41,42 +41,20 @@ function PreviewCard({
         {section && <span className="text-[11px] text-gold-200">{section}</span>}
       </div>
       <div
-        className={`relative flex min-h-[180px] flex-1 items-center justify-center rounded-2xl border px-6 py-8 text-center shadow-stage ${
+        className={`relative aspect-video w-full overflow-hidden rounded-2xl border shadow-stage ${
           muted ? "opacity-70" : ""
         }`}
         style={surface}
       >
         {blackout ? null : titleSlide && lines.length ? (
-          <div className="absolute inset-0 flex flex-col px-6 pb-5 pt-6">
-            <div className="flex min-h-0 flex-1 items-center justify-center">
-              <p className="max-w-[12ch] text-center text-4xl leading-tight" style={stageLyricStyle(theme)}>
-                {lines[0]}
-              </p>
-            </div>
-            {author ? (
-              <p
-                className="max-w-[70%] shrink-0 self-end text-right text-sm leading-snug"
-                style={{
-                  color: stageMutedColor(theme),
-                  fontFamily: theme.fontFamily,
-                  fontWeight: 400,
-                }}
-              >
-                {author}
-              </p>
-            ) : null}
-          </div>
+          <StageTitle title={lines[0] ?? ""} author={author} theme={theme} />
         ) : lines.length ? (
-          <p className="max-w-[28ch] text-2xl sm:text-3xl" style={stageLyricStyle(theme)}>
-            {lines.map((line, index) => (
-              <span key={`${index}-${line}`} className="block">
-                {line}
-              </span>
-            ))}
-          </p>
+          <div className={LYRIC_STAGE_INSET}>
+            <FittedLyrics lines={lines} theme={theme} />
+          </div>
         ) : (
           <p
-            className="text-sm uppercase tracking-[0.24em]"
+            className="absolute inset-0 flex items-center justify-center text-sm uppercase tracking-[0.24em]"
             style={{ color: stageMutedColor(theme) }}
           >
             Empty

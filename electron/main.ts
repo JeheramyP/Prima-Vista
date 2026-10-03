@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
+import { writeJsonAtomic } from "./writeJsonAtomic";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -80,9 +81,7 @@ async function readLibraryFile(): Promise<SongRecord[] | null> {
 }
 
 async function writeLibraryFile(songs: SongRecord[]) {
-  const file = libraryPath();
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  await fs.writeFile(file, JSON.stringify(songs, null, 2), "utf8");
+  await writeJsonAtomic(libraryPath(), songs);
 }
 
 function themesPath() {
@@ -234,7 +233,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle("songs:save", async (_event, songs: SongRecord[]) => {
     if (!Array.isArray(songs)) return false;
-    await writeLibraryFile(songs);
+    try {
+      await writeLibraryFile(songs);
+    } catch (error) {
+      console.error("Failed to save song library:", error);
+      throw error;
+    }
     return true;
   });
 

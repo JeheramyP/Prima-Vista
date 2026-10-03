@@ -307,10 +307,37 @@ async function readPersistedLibrary(): Promise<Song[] | null> {
 
 async function commitPersistedLibrary(songs: Song[]) {
   if (window.primaVista?.saveSongs) {
-    await window.primaVista.saveSongs(songs);
+    const saved = await window.primaVista.saveSongs(songs);
+    if (!saved) throw new Error("Couldn't save the song library.");
     return;
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(songs));
+}
+
+const LIBRARY_SAVE_FAILURE =
+  "Couldn't save the song library. Your latest changes are still on screen and may be lost if you quit.";
+
+let librarySaveError: string | null = null;
+const librarySaveListeners = new Set<(message: string | null) => void>();
+
+export function subscribeLibrarySaveError(listener: (message: string | null) => void) {
+  listener(librarySaveError);
+  librarySaveListeners.add(listener);
+  return () => {
+    librarySaveListeners.delete(listener);
+  };
+}
+
+function reportLibrarySaveError(message: string | null) {
+  librarySaveError = message;
+  for (const listener of librarySaveListeners) listener(message);
+}
+
+function librarySaveMessage(error: unknown) {
+  const raw = error instanceof Error ? error.message : "";
+  const detail = raw.replace(/^Error invoking remote method '[^']+':\s*/, "").trim();
+  if (!detail || detail.startsWith("Couldn't save the song library")) return LIBRARY_SAVE_FAILURE;
+  return `${LIBRARY_SAVE_FAILURE}\n${detail}`;
 }
 
 let libraryWriteTail: Promise<void> = Promise.resolve();
@@ -318,10 +345,20 @@ let libraryWriteTail: Promise<void> = Promise.resolve();
 /**
  * Whole-library saves must run one at a time. Each turn copies the in-memory
  * library when the write starts, so a slower save cannot finish last and
- * replace the file with a stale copy.
+ * replace the file with a stale copy. A failed write stays on the queue's
+ * rejection, and is also reported for the controller, so the next save can
+ * still run.
  */
 function persistLibrary(): Promise<void> {
-  const write = libraryWriteTail.then(() => commitPersistedLibrary(structuredClone(SONG_LIBRARY)));
+  const write = libraryWriteTail.then(async () => {
+    try {
+      await commitPersistedLibrary(structuredClone(SONG_LIBRARY));
+      reportLibrarySaveError(null);
+    } catch (error) {
+      reportLibrarySaveError(librarySaveMessage(error));
+      throw error;
+    }
+  });
   libraryWriteTail = write.then(
     () => undefined,
     () => undefined,
@@ -334,7 +371,11 @@ export async function loadLibrary(): Promise<Song[]> {
   if (stored) {
     replaceLibrary(stored);
   } else {
-    await persistLibrary();
+    try {
+      await persistLibrary();
+    } catch {
+      // The bundled songs stay in memory. persistLibrary already reported the failed write.
+    }
   }
   return [...SONG_LIBRARY];
 }
@@ -343,8 +384,7 @@ function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-export async function searchSongs(query: string): Promise<Song[]> {
-  await wait(60);
+export function searchSongs(query: string): Song[] {
   const q = normalize(query);
   if (!q) return [...SONG_LIBRARY];
   return SONG_LIBRARY.filter((song) => {
@@ -355,13 +395,11 @@ export async function searchSongs(query: string): Promise<Song[]> {
   });
 }
 
-export async function getSongById(id: string): Promise<Song | undefined> {
-  await wait(80);
+export function getSongById(id: string): Song | undefined {
   return SONG_LIBRARY.find((song) => song.id === id);
 }
 
 export async function saveSong(song: Song): Promise<Song> {
-  await wait(40);
   if (removedSongIds.has(song.id)) return song;
   const index = SONG_LIBRARY.findIndex((existing) => existing.id === song.id);
   if (index === -1) SONG_LIBRARY.push(song);
@@ -382,8 +420,4 @@ export async function deleteSong(id: string): Promise<boolean> {
   SONG_LIBRARY.splice(index, 1);
   await persistLibrary();
   return true;
-}
-
-function wait(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
 }

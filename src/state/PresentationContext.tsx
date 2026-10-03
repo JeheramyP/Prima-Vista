@@ -37,6 +37,11 @@ const PROVISIONAL_REUSE_MS = 1000;
 let provisionalNewSong: { id: string; createdAt: number } | null = null;
 let newSongSerial = 0;
 
+/** The controller banner reports the failure; callers still update in-memory state. */
+function settleSave(work: Promise<unknown>) {
+  void work.catch(() => undefined);
+}
+
 function isUntouchedBlank(song: Song) {
   return song.title === "Untitled" && !song.artist && !song.key && song.sections.length === 0;
 }
@@ -162,7 +167,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     const song = SONG_LIBRARY.find((candidate) => candidate.id === current.id);
     if (!song) return;
     writeDraftOntoSong(song, draftRef.current);
-    if (libraryReadyRef.current) void saveSong(song);
+    if (libraryReadyRef.current) settleSave(saveSong(song));
   }, [cancelPendingPersist]);
 
   useEffect(() => {
@@ -209,7 +214,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
           if (pendingCurrent.theme) SONG_LIBRARY[index].theme = pendingCurrent.theme;
           if (!songs.some((song) => song.id === pendingId)) songs.push(SONG_LIBRARY[index]);
         }
-        void saveSong(SONG_LIBRARY.find((song) => song.id === pendingId) ?? restored);
+        settleSave(saveSong(SONG_LIBRARY.find((song) => song.id === pendingId) ?? restored));
       }
       const first = songs[0] ?? null;
       if (selectionTouchedRef.current) {
@@ -315,7 +320,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       persistTimerRef.current = null;
       if (!mirroredNewIdsRef.current.has(id)) return;
       const latest = SONG_LIBRARY.find((candidate) => candidate.id === id);
-      if (latest) void saveSong(latest);
+      if (latest) settleSave(saveSong(latest));
     }, 300);
     return () => cancelPendingPersist();
   }, [activeSong, cancelPendingPersist, draft]);
@@ -500,7 +505,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       current.some((song) => song.id === blank.id) ? current : [...current, blank],
     );
     setLibraryVersion((version) => version + 1);
-    if (libraryReadyRef.current) void saveSong(blank);
+    if (libraryReadyRef.current) settleSave(saveSong(blank));
   }, [adoptSong, flushPendingNewSong]);
 
   const deleteSong = useCallback(
@@ -510,7 +515,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
         mirroredNewIdsRef.current.delete(id);
         cancelPendingPersist();
       }
-      await deleteSongFromLibrary(id);
+      try {
+        await deleteSongFromLibrary(id);
+      } catch {
+        // In-memory removal still applies. The controller banner reports the failed write.
+      }
       setSetlistEntries((entries) => entries.filter((entry) => entry.songId !== id));
       if (activeSong?.id === id) {
         setActiveEntryId(null);
@@ -534,9 +543,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     const index = SONG_LIBRARY.findIndex((song) => song.id === next.id);
     if (index === -1) return;
     SONG_LIBRARY[index] = next;
-    void saveSong(next).then(() => {
-      setLibraryVersion((version) => version + 1);
-    });
+    settleSave(
+      saveSong(next).finally(() => {
+        setLibraryVersion((version) => version + 1);
+      }),
+    );
   }, [activeSong]);
 
   const addCustomTheme = useCallback(
@@ -578,7 +589,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setDraftState(songToDraft(nextSong));
       setSlides(nextSlides);
       setCurrentIndex(nextIndex);
-      await saveSong(nextSong);
+      try {
+        await saveSong(nextSong);
+      } catch {
+        // Slides already reflect the edit. The controller banner reports the failed write.
+      }
       setLibraryVersion((version) => version + 1);
     } finally {
       const remaining = Math.max(0, 700 - (Date.now() - startedAt));
