@@ -35,3 +35,45 @@ body {
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
+/* Dark track for the preview-size slider. Native range chrome is light. */
+.preview-size {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px;
+  background: transparent;
+}
+
+.preview-size::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: #3d3932;
+}
+
+.preview-size::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: none;
+  border-radius: 999px;
+  background: #ead7b0;
+  cursor: pointer;
+}
+
+.preview-size::-moz-range-track {
+  height: 4px;
+  border: none;
+  border-radius: 999px;
+  background: #3d3932;
+}
+
+.preview-size::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 999px;
+  background: #ead7b0;
+  cursor: pointer;
+}
