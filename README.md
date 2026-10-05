@@ -18,14 +18,14 @@ No more guessing what comes next - overview all the lyrics and make necessary ed
 
 To install the application as a desktop app, run the installer for the operating system being used. Windows runs .exe, Linux runs .AppImage or .deb.
 
-Clone from the GitHub repo, then run:
+Alternatively, clone from the GitHub repo, then run:
 
 ```bash
 npm install
 npm run dev
 ```
 
-The controller opens first. Use **Open output** to spawn the presentation window. If a second display is connected, the output window is placed on it automatically.
+The controller opens first. Use **Open output** to spawn the presentation window. If a second display is connected, the output window is placed on it automatically. *Be advised* Windows users may have to enable script running and/or developer mode on their device. Enable script running (per session) with the command "Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass". Enable developer mode through settings.
 
 ## Controls
 
