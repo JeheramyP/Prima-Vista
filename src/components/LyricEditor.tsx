@@ -1,3 +1,12 @@
+/**
+ * Section editor.
+ *
+ * Edits the draft's title, artist, key, and ordered section cards. Palette
+ * drags insert a kind. Card drags reorder. Update slides calls `applyEditor`,
+ * which is what publishes an existing song. The Copy-paste tab is
+ * `PasteLyricsMode`. The selected tab is kept in `lastMode` across unmounts
+ * when the operator flips back to the Slides grid.
+ */
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { confirmDialog } from "../lib/confirm";
 import {

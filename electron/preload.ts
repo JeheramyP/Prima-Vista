@@ -1,3 +1,11 @@
+/**
+ * Preload bridge.
+ *
+ * Exposes `window.primaVista` in both windows. Each method maps to one IPC
+ * channel handled in `main.ts`. The renderer types for this object live on
+ * `PrimaVistaAPI` in `src/types.ts`. This file keeps its own loose payload
+ * types so the preload build does not import the renderer.
+ */
 import { contextBridge, ipcRenderer } from "electron";
 
 export type SlidePayload = {

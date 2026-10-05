@@ -1,3 +1,11 @@
+/**
+ * Controller layout.
+ *
+ * Three columns: setlist, library search, then theme, previews, and either
+ * the slide grid or the lyric editor. Keyboard shortcuts are registered here
+ * so they apply across those panes, and they skip events while a field is
+ * being typed in. Ctrl/Cmd+Enter still runs Update slides from a field.
+ */
 import { useEffect, useState, type ReactNode } from "react";
 import DualPreview from "../components/DualPreview";
 import { subscribeLibrarySaveError } from "../lib/songs";

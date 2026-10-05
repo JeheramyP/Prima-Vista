@@ -1,3 +1,10 @@
+/**
+ * Kind chip with a number menu.
+ *
+ * The same kind and number means the same part. In the paste roadmap that
+ * reuses one pasted paragraph. Options are the numbers already in use for
+ * this kind, plus the next new number.
+ */
 import { kindName, kindTone } from "../lib/slides";
 import type { SectionKind } from "../types";
 

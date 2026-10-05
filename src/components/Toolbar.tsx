@@ -1,3 +1,9 @@
+/**
+ * Controller header.
+ *
+ * Shows the live song and slide index, and the transport controls: previous,
+ * next, clear, blackout, and open or close the output window.
+ */
 import type { ReactNode } from "react";
 import { usePresentation } from "../state/PresentationContext";
 

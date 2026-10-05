@@ -1,3 +1,12 @@
+/**
+ * Song library.
+ *
+ * `SONG_LIBRARY` is both the bundled seed and the live in-memory list.
+ * `loadLibrary` replaces it from `song-library.json` when that file exists,
+ * and writes the seed when it does not. Every save and delete rewrites the
+ * whole file through a one-at-a-time queue so a slow write cannot land last
+ * with a stale copy. Search is local over title, artist, and lyric lines.
+ */
 import type { LyricSection, SectionKind, Song } from "../types";
 
 function section(
@@ -9,6 +18,10 @@ function section(
   return { id, kind, label, lines };
 }
 
+/**
+ * Bundled hymns and the live list. Callers mutate this array, then persist it.
+ * `structuredClone` keeps later edits from changing the array literal.
+ */
 export const SONG_LIBRARY: Song[] = structuredClone([
   {
     id: "amazing-grace",
@@ -366,6 +379,10 @@ function persistLibrary(): Promise<void> {
   return write;
 }
 
+/**
+ * Replaces `SONG_LIBRARY` with the saved file, or writes the bundled seed
+ * when no file exists yet. Returns a shallow copy of the live list.
+ */
 export async function loadLibrary(): Promise<Song[]> {
   const stored = await readPersistedLibrary();
   if (stored) {
@@ -384,6 +401,7 @@ function normalize(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+/** Case-insensitive match on title, artist, and lyric lines. An empty query returns every song. */
 export function searchSongs(query: string): Song[] {
   const q = normalize(query);
   if (!q) return [...SONG_LIBRARY];
@@ -399,6 +417,10 @@ export function getSongById(id: string): Song | undefined {
   return SONG_LIBRARY.find((song) => song.id === id);
 }
 
+/**
+ * Inserts or replaces one song, then writes the whole library.
+ * A song already passed to `deleteSong` is not written back by a late save.
+ */
 export async function saveSong(song: Song): Promise<Song> {
   if (removedSongIds.has(song.id)) return song;
   const index = SONG_LIBRARY.findIndex((existing) => existing.id === song.id);
@@ -413,6 +435,7 @@ export async function saveSong(song: Song): Promise<Song> {
   return song;
 }
 
+/** Drops a song from memory and from the file. Returns false if the id was already gone. */
 export async function deleteSong(id: string): Promise<boolean> {
   removedSongIds.add(id);
   const index = SONG_LIBRARY.findIndex((existing) => existing.id === id);

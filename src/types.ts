@@ -1,3 +1,11 @@
+/**
+ * Shared renderer types.
+ *
+ * `Song` and `LyricSection` are what the library stores. `Slide` is derived
+ * from a song and is not written to disk. `SlidePayload` is the wire object
+ * the controller sends and the output paints. `PrimaVistaAPI` is the preload
+ * bridge on `window.primaVista`.
+ */
 import type { CustomThemeRecord, StageThemeId } from "./lib/stageThemes";
 
 export type SectionKind =

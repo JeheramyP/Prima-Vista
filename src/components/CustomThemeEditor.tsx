@@ -1,3 +1,11 @@
+/**
+ * Custom theme panel.
+ *
+ * Edits a fill, one to three hex colors, and a linear angle, with named
+ * presets as starting points. The preview is a real `StageTheme` from
+ * `themeFromRecord`, so type and contrast match the output. Saving reports
+ * a `CustomThemeRecord`. It does not write the file itself.
+ */
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createCustomThemeId } from "../lib/customThemes";
 import {

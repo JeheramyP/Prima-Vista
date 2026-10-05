@@ -1,3 +1,11 @@
+/**
+ * Copy-paste lyric import.
+ *
+ * Splits pasted text into blocks on blank lines and section headers, then
+ * walks a roadmap of kind/number steps. The first step of each kind and
+ * number consumes the next block. A later step with the same pair reuses
+ * it. Instrumental steps take no block.
+ */
 import type { LyricSection, SectionKind } from "../types";
 import { sectionNumberOptions, withSectionLabels } from "./slides";
 
@@ -82,6 +90,7 @@ export function assignBlocks(steps: RoadmapStep[], blockCount: number) {
   return { assignments, used };
 }
 
+/** Applies block assignment and returns real lyric sections for the draft. */
 export function roadmapToSections(steps: RoadmapStep[], blocks: string[][]): LyricSection[] {
   return assignBlocks(steps, blocks.length).assignments.map(({ step, label, block }) => ({
     id: step.id,

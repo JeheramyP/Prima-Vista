@@ -1,4 +1,6 @@
 /**
+ * Drag-end click guard.
+ *
  * A drag that ends over a button still dispatches click after dragend.
  * Song and setlist rows are draggable wrappers around those buttons, so that
  * click would select the song, leave setlist follow, or make a reordered row live.

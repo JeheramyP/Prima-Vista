@@ -1,3 +1,11 @@
+/**
+ * Stage text that sizes itself to the box.
+ *
+ * Lyric lines stay on one line and shrink. Titles wrap. Measurement uses the
+ * DOM, then `largestSizeThatFits`, then a short step-down if web fonts change
+ * glyph widths. `StageTitle` is the shared title-card layout for the output
+ * and the controller preview.
+ */
 import { useLayoutEffect, useRef, useState } from "react";
 import { largestSizeThatFits, MIN_FONT_PX, stageFontCapPx } from "../lib/fitStageText";
 import { stageLyricStyle, stageMutedColor, type StageTheme } from "../lib/stageThemes";

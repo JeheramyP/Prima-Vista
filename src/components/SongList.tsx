@@ -1,3 +1,11 @@
+/**
+ * Library column.
+ *
+ * Lists search results, selects a song, and starts a drag of
+ * `application/x-prima-vista-song` for the setlist. New song is cooled down
+ * for a second so a double-click cannot create two blanks. Delete confirms
+ * before removing the song from the library and the setlist.
+ */
 import { useEffect, useRef, useState } from "react";
 import { confirmDialog } from "../lib/confirm";
 import { beginDragClickGuard, endDragClickGuard, ignoreClickAfterDrag } from "../lib/dragClick";

@@ -1,3 +1,5 @@
+/* Controller and output share this sheet. Stage colors come from theme
+   records as inline styles, not from these Tailwind tokens. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

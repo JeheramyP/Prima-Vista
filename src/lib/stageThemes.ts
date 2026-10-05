@@ -1,3 +1,12 @@
+/**
+ * Stage themes.
+ *
+ * Built-in looks are full `StageTheme` paint records. User themes and edits
+ * of built-ins are stored as `CustomThemeRecord` (fill, colors, angle) and
+ * expanded here. `registerCustomThemes` fills the map `stageThemeById`
+ * checks before the built-in list. Songs with a missing or deleted theme id
+ * fall back to Sanctuary.
+ */
 import type { CSSProperties } from "react";
 
 const FRAUNCES = '"Fraunces", Georgia, serif';
@@ -269,6 +278,7 @@ export function customChip(record: Pick<CustomThemeRecord, "fill" | "colors" | "
   return customBackground(record);
 }
 
+/** Expands a saved fill into a paintable theme. Light backgrounds get dark text. */
 export function buildCustomTheme(record: CustomThemeRecord): StageTheme {
   // Glow backgrounds are mostly the base color, so only that decides the text color.
   const sampled = record.fill === "glow" ? record.colors.slice(0, 1) : record.colors;

@@ -1,3 +1,11 @@
+/**
+ * Font-size search used by `FittedLyrics`.
+ *
+ * Finds the largest integer pixel size that still fits a measured box.
+ * The cap is a fraction of the stage height, then lowered so the line stack
+ * can fit. It is not a fraction of the window width.
+ */
+
 /** Smallest rendered size the fitter will try. Below this, a line still stays inside the stage. */
 const MIN_FONT_PX = 1;
 

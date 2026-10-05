@@ -1,3 +1,16 @@
+/**
+ * Controller state.
+ *
+ * Mounted only on the `#/` route. Holds the selected song, the editor draft,
+ * the derived slide list, blackout and clear, the setlist, and theme edits.
+ * Every change that should appear on the projector is folded into a
+ * `SlidePayload` and sent through `window.primaVista.setSlide`.
+ *
+ * `SONG_LIBRARY` is mutated in place. `libraryVersion` is the signal that
+ * tells React those mutations happened. A new song's draft is written back
+ * as the operator types (`mirroredNewIdsRef`). Songs already in the library
+ * wait for `applyEditor` ("Update slides").
+ */
 import {
   createContext,
   createElement,
@@ -342,6 +355,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
 
   const currentSlide = slides[currentIndex];
 
+  /** Wire object for the output. Republished by the effect below on every change. */
   const payload = useMemo<SlidePayload>(
     () => ({
       songTitle: activeSong?.title ?? "",
@@ -377,6 +391,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  /**
+   * Makes `song` the live song and rebuilds its slides.
+   * `keepScreen` leaves blackout and clear as they are, which setlist advances use.
+   */
   const showSong = useCallback(
     (song: Song, position: SlidePosition = "first", options?: ShowSongOptions) => {
       flushPendingNewSong();
@@ -488,6 +506,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     );
   }, []);
 
+  /**
+   * Inserts a blank song and mirrors its draft into the library while it stays
+   * selected. A second call within a second reuses an untouched blank.
+   */
   const createNewSong = useCallback(() => {
     const provisional = provisionalNewSong
       ? SONG_LIBRARY.find((song) => song.id === provisionalNewSong?.id)
@@ -594,6 +616,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     setSavedThemes([...CUSTOM_THEMES]);
   }, []);
 
+  /**
+   * "Update slides." Writes the draft onto the song, rebuilds slides, and
+   * stays on the previous slide id when that id still exists.
+   */
   const applyEditor = useCallback(async () => {
     if (updatingSlidesTimerRef.current !== null) {
       window.clearTimeout(updatingSlidesTimerRef.current);
@@ -641,6 +667,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     [slides.length],
   );
 
+  /** Next slide, or the next setlist song's first slide when this song is finished. */
   const next = useCallback(() => {
     if (currentIndex >= slides.length - 1 && nextSetlistItem) {
       selectSetlistEntry(nextSetlistItem.entry.id, "first", { keepScreen: true });
@@ -649,6 +676,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     goTo(currentIndex + 1);
   }, [currentIndex, goTo, nextSetlistItem, selectSetlistEntry, slides.length]);
 
+  /** Previous slide, or the previous setlist song's last slide at the start of this song. */
   const prev = useCallback(() => {
     if (currentIndex <= 0 && prevSetlistItem) {
       selectSetlistEntry(prevSetlistItem.entry.id, "last", { keepScreen: true });

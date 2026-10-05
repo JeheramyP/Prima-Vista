@@ -1,3 +1,11 @@
+/**
+ * Copy-paste editor.
+ *
+ * The left side is the pasted lyric text. The right side is the sung order.
+ * Blocks are assigned by `assignBlocks`. Unused paragraphs stay in the text
+ * and in `pasteCache` so leaving this tab does not throw them away, as long
+ * as the draft sections still match what this mode last produced.
+ */
 import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { confirmDialog } from "../lib/confirm";
 import {

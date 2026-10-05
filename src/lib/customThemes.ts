@@ -1,3 +1,11 @@
+/**
+ * Theme library persistence.
+ *
+ * `CUSTOM_THEMES` holds user-made themes and saved edits of built-in ids.
+ * Loads and saves go through the preload when Electron is present, and
+ * through `localStorage` otherwise. `registerCustomThemes` runs after every
+ * change so the stage resolver sees the new paint records immediately.
+ */
 import {
   isCustomThemeRecord,
   isDefaultThemeId,

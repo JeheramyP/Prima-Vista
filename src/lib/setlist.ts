@@ -1,3 +1,11 @@
+/**
+ * Setlist persistence.
+ *
+ * Entries are `{ id, songId }` in `localStorage`, so the same song can be
+ * queued twice and the order is not part of the song file. Drag payloads
+ * use the MIME types exported here so a library row and a setlist row are
+ * not treated as the same drag.
+ */
 import type { SetlistEntry } from "../types";
 
 const STORAGE_KEY = "prima-vista-setlist";
@@ -11,6 +19,7 @@ function isEntry(value: unknown): value is SetlistEntry {
   return typeof entry.id === "string" && typeof entry.songId === "string";
 }
 
+/** Reads the setlist. A missing or corrupt value starts an empty gathering. */
 export function loadSetlist(): SetlistEntry[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);

@@ -1,3 +1,10 @@
+/**
+ * Current and next stage previews.
+ *
+ * Uses the same inset and title layout as the output window. The next card
+ * is the following slide, or the next setlist song's title slide when this
+ * song is finished. Blackout and clear empty the current card.
+ */
 import FittedLyrics, { LYRIC_STAGE_INSET, StageTitle } from "./FittedLyrics";
 import {
   songThemeId,

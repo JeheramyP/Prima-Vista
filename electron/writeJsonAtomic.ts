@@ -1,3 +1,9 @@
+/**
+ * Crash-safe JSON replace used for the song library and the theme file.
+ *
+ * Writes a sibling temp file, fsyncs it, then renames it over the destination.
+ * A failed write or a crash before the rename leaves the previous file intact.
+ */
 import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";

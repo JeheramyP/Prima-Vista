@@ -1,3 +1,7 @@
+/**
+ * Launches Electron against the built main process (`dist-electron/main.js`).
+ * `--no-sandbox` matches environments where the Chromium sandbox cannot start.
+ */
 import { spawn } from "node:child_process";
 import electronPath from "electron";
 

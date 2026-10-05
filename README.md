@@ -10,7 +10,7 @@ No more guessing what comes next - overview all the lyrics and make necessary ed
 
 ## What it does
 
-- **Controller window** searches a local song library, builds slides from verses and choruses, and lets you jump, edit, or preview the next cue.
+- **Controller window** searches a local song library, builds slides from verses and choruses, and lets you jump, edit, or preview the next slide.
 - **Output window** is a frameless, high-contrast stage display meant to be dragged onto a projector or second monitor.
 - **Electron IPC** keeps the live slide in sync between the two windows.
 
@@ -39,3 +39,9 @@ The editor builds a song from sections. Drag **Verse**, **Chorus**, **Bridge**, 
 Switch the editor to **Copy-paste** to paste a whole song at once. Blank lines (or headers like `[Verse 1]`) split the lyrics into blocks. Drag blocks into the roadmap on the right in the order they are sung: each block takes the next pasted paragraph. Every section has a number picker (Chorus 1, Chorus 2, and so on) in both editors, and that label carries through to the slides. In the roadmap, giving a block the same number as an earlier one reuses its lyrics instead of taking a new paragraph.
 
 Songs live in a local library. The first launch seeds it from the bundled hymns in `src/lib/songs.ts`; later edits are saved on this machine.
+
+## Documentation
+
+- [Overview](docs/OVERVIEW.md) — the two windows, how a slide reaches the screen, and where data is stored.
+- [User guide](docs/USER_GUIDE.md) — running a gathering: output, setlist, editor, and themes.
+- [Developer guide](docs/DEVELOPER.md) — IPC, persistence, the slide model, and how to extend the app.

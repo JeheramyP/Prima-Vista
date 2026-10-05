@@ -1,3 +1,10 @@
+/**
+ * Slide overview.
+ *
+ * One tile per derived slide, title card included. Clicking a tile jumps the
+ * live index. Tiles show the section label and the lyric lines, not a second
+ * copy of the stage layout.
+ */
 import { kindTone } from "../lib/slides";
 import { usePresentation } from "../state/PresentationContext";
 

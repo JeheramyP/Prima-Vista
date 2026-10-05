@@ -1,4 +1,4 @@
-/** @type {import('tailwindcss').Config} */
+/** Controller palette. Stage backgrounds are not defined here. @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {

@@ -1,3 +1,11 @@
+/**
+ * Output stage.
+ *
+ * Subscribes to `slide:update` and paints one payload: black, a title card,
+ * or fitted lyrics on the song's background. Clear hides the words and keeps
+ * the background. This view does not read the controller's React state. The
+ * top strip is a window drag region. Double-click leaves fullscreen.
+ */
 import { useEffect, useMemo, useRef, useState } from "react";
 import FittedLyrics, { LYRIC_STAGE_INSET, StageTitle } from "../components/FittedLyrics";
 import {

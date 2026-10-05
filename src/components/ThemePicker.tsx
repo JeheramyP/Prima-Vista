@@ -1,3 +1,10 @@
+/**
+ * Theme row for the selected song.
+ *
+ * Lists built-in looks, saved edits of those looks, and user-made themes.
+ * Choosing one saves it on the song immediately. Edit opens `CustomThemeEditor`.
+ * Reset defaults drops built-in overrides and leaves user themes in place.
+ */
 import { useCallback, useRef, useState } from "react";
 import { confirmDialog } from "../lib/confirm";
 import {

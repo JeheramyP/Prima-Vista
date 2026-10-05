@@ -1,3 +1,7 @@
+/**
+ * Vite config for the renderer, the Electron main process, and the preload.
+ * `npm run dev` serves the controller at `/` and the output at `/#/presentation`.
+ */
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import electron from "vite-plugin-electron/simple";

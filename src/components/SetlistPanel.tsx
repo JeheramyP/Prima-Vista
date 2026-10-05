@@ -1,3 +1,10 @@
+/**
+ * Setlist column.
+ *
+ * Accepts library songs and reorders its own rows. The drop index is the row
+ * whose midpoint the pointer has passed. Clicking a row follows that entry
+ * from its first slide. Clear asks for confirmation, then empties the list.
+ */
 import { useRef, useState, type DragEvent } from "react";
 import { confirmDialog } from "../lib/confirm";
 import { beginDragClickGuard, endDragClickGuard, ignoreClickAfterDrag } from "../lib/dragClick";

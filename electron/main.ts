@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, screen } from "electron";
+/**
+ * Electron main process.
+ *
+ * Owns the controller window and the frameless output window, the last slide
+ * payload, and the two JSON files in `userData` (`song-library.json`,
+ * `custom-themes.json`). The renderer reaches this file only through the
+ * channels in `preload.ts`. Closing the controller closes the output.
+ */
+import { app, BrowserWindow, ipcMain, nativeImage, screen } from "electron";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -17,8 +25,14 @@ process.env.VITE_PUBLIC = isDev
 
 const VITE_DEV_SERVER_URL = process.env["VITE_DEV_SERVER_URL"];
 const preloadPath = path.join(__dirname, "preload.js");
+/** Taskbar and window icon. Vite copies `public/assets` into `dist/assets`. */
+const appIcon = nativeImage.createFromPath(
+  path.join(process.env.VITE_PUBLIC as string, "assets", "Prima Vista.png"),
+);
 
+/** Controller on `#/`. Closing it also closes the output. */
 let controllerWindow: BrowserWindow | null = null;
+/** Frameless stage on `#/presentation`. Null while the output is closed. */
 let presentationWindow: BrowserWindow | null = null;
 
 type SlidePayload = {
@@ -43,6 +57,7 @@ type SongRecord = {
   sections: unknown[];
 };
 
+/** Latest payload, replayed when the output window is created or reopened. */
 let lastSlide: SlidePayload = {
   songTitle: "",
   artist: "",
@@ -122,6 +137,7 @@ function restorePresentationWindow() {
   return win.isFullScreen();
 }
 
+/** Operator window. Does not go fullscreen with the projector. */
 function createControllerWindow() {
   controllerWindow = new BrowserWindow({
     width: 1480,
@@ -130,6 +146,7 @@ function createControllerWindow() {
     minHeight: 720,
     backgroundColor: "#0c0b0a",
     title: "Prima Vista",
+    icon: appIcon,
     autoHideMenuBar: true,
     webPreferences: {
       preload: preloadPath,
@@ -153,6 +170,12 @@ function createControllerWindow() {
   });
 }
 
+/**
+ * Output window. A second display gets a fullscreen window on that display.
+ * A single display gets a smaller window offset from the primary so it can
+ * be dragged onto a projector. Calling this again focuses the existing window
+ * and resends the current slide.
+ */
 function createPresentationWindow() {
   if (presentationWindow && !presentationWindow.isDestroyed()) {
     presentationWindow.focus();
@@ -177,6 +200,7 @@ function createPresentationWindow() {
     transparent: false,
     backgroundColor: "#000000",
     title: "Prima Vista Output",
+    icon: appIcon,
     autoHideMenuBar: true,
     skipTaskbar: false,
     alwaysOnTop: false,

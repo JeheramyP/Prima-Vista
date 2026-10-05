@@ -1,3 +1,9 @@
+/**
+ * Library search field.
+ *
+ * Writes the query on the presentation context. Matching runs there, debounced,
+ * over title, artist, and lyric lines.
+ */
 import { usePresentation } from "../state/PresentationContext";
 
 export default function SearchBar() {

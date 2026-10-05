@@ -3,7 +3,10 @@
   "productName": "Prima Vista",
   "version": "1.0.0",
   "description": "Church and worship lyric presentation for dual-display setups",
-  "author": "Prima Vista",
+  "author": {
+    "name": "Prima Vista",
+    "email": "jedde.mobile@gmail.com"
+  },
   "private": true,
   "main": "dist-electron/main.js",
   "scripts": {
@@ -18,6 +21,7 @@
   "build": {
     "appId": "com.primavista.app",
     "productName": "Prima Vista",
+    "icon": "dist/assets/Prima Vista.png",
     "directories": {
       "output": "release"
     },
