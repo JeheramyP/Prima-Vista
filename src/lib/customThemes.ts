@@ -85,6 +85,16 @@ export async function deleteCustomTheme(id: string): Promise<CustomThemeRecord[]
   return [...CUSTOM_THEMES];
 }
 
+/** Removes saved edits of the built-in themes. User-made themes stay in the library. */
+export async function resetDefaultThemes(): Promise<CustomThemeRecord[]> {
+  const custom = CUSTOM_THEMES.filter((theme) => !isDefaultThemeId(theme.id));
+  if (custom.length === CUSTOM_THEMES.length) return [...CUSTOM_THEMES];
+  CUSTOM_THEMES.splice(0, CUSTOM_THEMES.length, ...custom);
+  sync();
+  await persistThemes();
+  return [...CUSTOM_THEMES];
+}
+
 export function customThemeRecord(id: string | undefined) {
   return id ? CUSTOM_THEMES.find((theme) => theme.id === id) : undefined;
 }

@@ -12,12 +12,13 @@ import {
   type ReactNode,
   type SetStateAction,
 } from "react";
-import { songThemeId, type CustomThemeRecord, type StageThemeId } from "../lib/stageThemes";
+import { isDefaultThemeId, songThemeId, type CustomThemeRecord, type StageThemeId } from "../lib/stageThemes";
 import {
   CUSTOM_THEMES,
   customThemeRecord,
   deleteCustomTheme as deleteCustomThemeFromLibrary,
   loadCustomThemes,
+  resetDefaultThemes as resetStoredDefaultThemes,
   saveCustomTheme,
 } from "../lib/customThemes";
 import { draftToSong, EMPTY_DRAFT, songToDraft, songToSlides } from "../lib/slides";
@@ -81,6 +82,7 @@ type PresentationState = {
   blackout: boolean;
   clear: boolean;
   presentationOpen: boolean;
+  presentationFullscreen: boolean;
   setlist: SetlistItem[];
   activeEntryId: string | null;
   upcoming: UpcomingSlide | null;
@@ -97,9 +99,13 @@ type PresentationState = {
   applyEditor: () => Promise<void>;
   setSongTheme: (theme: StageThemeId) => void;
   customThemes: CustomThemeRecord[];
+  /** Saved edits of the built-in themes. Absent themes still use the original look. */
+  defaultOverrides: CustomThemeRecord[];
   /** Saves the theme and applies it to the selected song. */
   addCustomTheme: (theme: CustomThemeRecord) => void;
   deleteCustomTheme: (id: string) => void;
+  /** Restores every edited built-in theme. Custom themes are left as they are. */
+  resetDefaultThemes: () => void;
   goTo: (index: number) => void;
   next: () => void;
   prev: () => void;
@@ -128,12 +134,21 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [blackout, setBlackout] = useState(false);
   const [clear, setClear] = useState(false);
   const [presentationOpen, setPresentationOpen] = useState(false);
+  const [presentationFullscreen, setPresentationFullscreen] = useState(false);
   const [libraryVersion, setLibraryVersion] = useState(0);
   const [draftRevision, setDraftRevision] = useState(0);
   const [libraryReady, setLibraryReady] = useState(false);
   const [setlistEntries, setSetlistEntries] = useState<SetlistEntry[]>(loadSetlist);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
-  const [customThemes, setCustomThemes] = useState<CustomThemeRecord[]>([]);
+  const [savedThemes, setSavedThemes] = useState<CustomThemeRecord[]>([]);
+  const customThemes = useMemo(
+    () => savedThemes.filter((theme) => !isDefaultThemeId(theme.id)),
+    [savedThemes],
+  );
+  const defaultOverrides = useMemo(
+    () => savedThemes.filter((theme) => isDefaultThemeId(theme.id)),
+    [savedThemes],
+  );
   const activeSongRef = useRef(activeSong);
   activeSongRef.current = activeSong;
   const draftRef = useRef(draft);
@@ -248,7 +263,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     void loadCustomThemes().then((themes) => {
-      if (!cancelled) setCustomThemes(themes);
+      if (!cancelled) setSavedThemes(themes);
     });
     return () => {
       cancelled = true;
@@ -341,7 +356,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       customTheme: customThemeRecord(songThemeId(activeSong)),
       titleSlide: currentSlide?.titleSlide ?? false,
     }),
-    [activeSong, currentSlide, currentIndex, slides.length, blackout, clear, draftRevision, customThemes],
+    [activeSong, currentSlide, currentIndex, slides.length, blackout, clear, draftRevision, savedThemes],
   );
 
   useEffect(() => {
@@ -349,9 +364,17 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   }, [payload]);
 
   useEffect(() => {
-    return window.primaVista?.onPresentationClosed(() => {
+    const unsubscribeClosed = window.primaVista?.onPresentationClosed(() => {
       setPresentationOpen(false);
+      setPresentationFullscreen(false);
     });
+    const unsubscribeFullscreen = window.primaVista?.onPresentationFullscreen((fullscreen) => {
+      setPresentationFullscreen(fullscreen);
+    });
+    return () => {
+      unsubscribeClosed?.();
+      unsubscribeFullscreen?.();
+    };
   }, []);
 
   const showSong = useCallback(
@@ -443,7 +466,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     return first
       ? { slide: first, songTitle: nextSetlistItem.song.title, theme: songThemeId(nextSetlistItem.song) }
       : null;
-  }, [activeSong, slides, currentIndex, nextSetlistItem, customThemes]);
+  }, [activeSong, slides, currentIndex, nextSetlistItem, savedThemes]);
 
   const adoptSong = useCallback((song: Song) => {
     pendingNewIdRef.current = song.id;
@@ -552,10 +575,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
 
   const addCustomTheme = useCallback(
     (theme: CustomThemeRecord) => {
-      const updating = CUSTOM_THEMES.some((item) => item.id === theme.id);
+      const updating = isDefaultThemeId(theme.id) || CUSTOM_THEMES.some((item) => item.id === theme.id);
       // The theme is registered synchronously, before the write finishes.
       void saveCustomTheme(theme);
-      setCustomThemes([...CUSTOM_THEMES]);
+      setSavedThemes([...CUSTOM_THEMES]);
       if (!updating) setSongTheme(theme.id);
     },
     [setSongTheme],
@@ -563,7 +586,12 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
 
   const deleteCustomTheme = useCallback((id: string) => {
     void deleteCustomThemeFromLibrary(id);
-    setCustomThemes([...CUSTOM_THEMES]);
+    setSavedThemes([...CUSTOM_THEMES]);
+  }, []);
+
+  const resetDefaultThemes = useCallback(() => {
+    void resetStoredDefaultThemes();
+    setSavedThemes([...CUSTOM_THEMES]);
   }, []);
 
   const applyEditor = useCallback(async () => {
@@ -638,10 +666,12 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const closePresentation = useCallback(async () => {
     await window.primaVista?.closePresentation();
     setPresentationOpen(false);
+    setPresentationFullscreen(false);
   }, []);
 
   const toggleFullscreen = useCallback(async () => {
-    await window.primaVista?.togglePresentationFullscreen();
+    const fullscreen = await window.primaVista?.togglePresentationFullscreen();
+    if (typeof fullscreen === "boolean") setPresentationFullscreen(fullscreen);
   }, []);
 
   const value = useMemo<PresentationState>(
@@ -657,6 +687,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       blackout,
       clear,
       presentationOpen,
+      presentationFullscreen,
       setlist,
       activeEntryId,
       upcoming,
@@ -673,8 +704,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       applyEditor,
       setSongTheme,
       customThemes,
+      defaultOverrides,
       addCustomTheme,
       deleteCustomTheme,
+      resetDefaultThemes,
       goTo,
       next,
       prev,
@@ -696,6 +729,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       blackout,
       clear,
       presentationOpen,
+      presentationFullscreen,
       setlist,
       activeEntryId,
       upcoming,
@@ -711,8 +745,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       applyEditor,
       setSongTheme,
       customThemes,
+      defaultOverrides,
       addCustomTheme,
       deleteCustomTheme,
+      resetDefaultThemes,
       goTo,
       next,
       prev,

@@ -74,10 +74,12 @@ export type PrimaVistaAPI = {
   openPresentation: () => Promise<boolean>;
   closePresentation: () => Promise<boolean>;
   togglePresentationFullscreen: () => Promise<boolean>;
+  exitPresentationFullscreen: () => Promise<boolean>;
   setSlide: (payload: SlidePayload) => void;
   getSlide: () => Promise<SlidePayload>;
   onSlideUpdate: (callback: (payload: SlidePayload) => void) => () => void;
   onPresentationClosed: (callback: () => void) => () => void;
+  onPresentationFullscreen: (callback: (fullscreen: boolean) => void) => () => void;
   loadSongs: () => Promise<Song[] | null>;
   saveSongs: (songs: Song[]) => Promise<boolean>;
   loadThemes: () => Promise<CustomThemeRecord[] | null>;

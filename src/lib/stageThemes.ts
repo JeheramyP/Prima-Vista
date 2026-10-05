@@ -291,12 +291,48 @@ export function buildCustomTheme(record: CustomThemeRecord): StageTheme {
   };
 }
 
+/** Starting point for editing a built-in theme. The original look stays until this is saved. */
+const DEFAULT_THEME_STARTS: Record<string, Pick<CustomThemeRecord, "fill" | "colors" | "angle">> = {
+  sanctuary: { fill: "glow", colors: ["#050505", "#c4892e"], angle: 0 },
+  midnight: { fill: "glow", colors: ["#070b16", "#7aa2ff"], angle: 0 },
+  parchment: { fill: "radial", colors: ["#e4c9a4", "#a86b45", "#4a3024"], angle: 0 },
+  cathedral: { fill: "glow", colors: ["#14080d", "#d4a84a"], angle: 0 },
+  daylight: { fill: "radial", colors: ["#c5d5e0", "#7f9aab", "#243442"], angle: 0 },
+  contrast: { fill: "solid", colors: ["#000000"], angle: 0 },
+  pine: { fill: "glow", colors: ["#07140e", "#8fbf7a"], angle: 0 },
+  ember: { fill: "glow", colors: ["#120804", "#e07a3d"], angle: 0 },
+  washed: { fill: "radial", colors: ["#d4eef6", "#297d9b", "#114d6e"], angle: 0 },
+  blood: { fill: "glow", colors: ["#14060a", "#e25b68"], angle: 0 },
+};
+
+export function editableDefaultTheme(theme: StageTheme): CustomThemeRecord {
+  const start = DEFAULT_THEME_STARTS[theme.id] ?? { fill: "solid" as const, colors: [theme.chip], angle: 0 };
+  return { id: theme.id, name: theme.name, ...start };
+}
+
+/** Built-in edits keep that theme's type. User-made themes use the standard lyric face. */
+export function themeFromRecord(record: CustomThemeRecord): StageTheme {
+  const built = buildCustomTheme(record);
+  const original = STAGE_THEMES.find((theme) => theme.id === record.id);
+  if (!original) return built;
+  return {
+    ...built,
+    blurb: original.blurb,
+    fontFamily: original.fontFamily,
+    fontWeight: original.fontWeight,
+    letterSpacing: original.letterSpacing,
+    lineHeight: original.lineHeight,
+    sizeScale: original.sizeScale,
+    frame: original.frame,
+  };
+}
+
 const customThemes = new Map<string, StageTheme>();
 
 /** Replaces the custom themes that stageThemeById and songThemeId can resolve. */
 export function registerCustomThemes(records: CustomThemeRecord[]) {
   customThemes.clear();
-  for (const record of records) customThemes.set(record.id, buildCustomTheme(record));
+  for (const record of records) customThemes.set(record.id, themeFromRecord(record));
 }
 
 export function isDefaultThemeId(id: string) {
@@ -308,7 +344,7 @@ export function isStageThemeId(value: unknown): value is StageThemeId {
 }
 
 export function stageThemeById(id: StageThemeId): StageTheme {
-  return STAGE_THEMES.find((theme) => theme.id === id) ?? customThemes.get(id) ?? STAGE_THEMES[0];
+  return customThemes.get(id) ?? STAGE_THEMES.find((theme) => theme.id === id) ?? STAGE_THEMES[0];
 }
 
 /** Songs without a saved theme use the original Sanctuary look. */

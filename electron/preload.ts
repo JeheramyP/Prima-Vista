@@ -27,6 +27,8 @@ contextBridge.exposeInMainWorld("primaVista", {
   closePresentation: () => ipcRenderer.invoke("presentation:close"),
   togglePresentationFullscreen: () =>
     ipcRenderer.invoke("presentation:toggle-fullscreen"),
+  exitPresentationFullscreen: () =>
+    ipcRenderer.invoke("presentation:exit-fullscreen"),
   setSlide: (payload: SlidePayload) => ipcRenderer.send("slide:update", payload),
   getSlide: () => ipcRenderer.invoke("slide:get") as Promise<SlidePayload>,
   onSlideUpdate: (callback: (payload: SlidePayload) => void) => {
@@ -38,6 +40,11 @@ contextBridge.exposeInMainWorld("primaVista", {
     const listener = () => callback();
     ipcRenderer.on("presentation:closed", listener);
     return () => ipcRenderer.removeListener("presentation:closed", listener);
+  },
+  onPresentationFullscreen: (callback: (fullscreen: boolean) => void) => {
+    const listener = (_event: unknown, fullscreen: boolean) => callback(fullscreen);
+    ipcRenderer.on("presentation:fullscreen", listener);
+    return () => ipcRenderer.removeListener("presentation:fullscreen", listener);
   },
   loadSongs: () => ipcRenderer.invoke("songs:load") as Promise<SongRecord[] | null>,
   saveSongs: (songs: SongRecord[]) =>

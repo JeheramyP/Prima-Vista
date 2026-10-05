@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FittedLyrics, { LYRIC_STAGE_INSET, StageTitle } from "../components/FittedLyrics";
 import {
-  buildCustomTheme,
   isCustomThemeRecord,
   songThemeId,
   stageSurfaceStyle,
   stageThemeById,
+  themeFromRecord,
 } from "../lib/stageThemes";
 import type { SlidePayload } from "../types";
 
@@ -24,10 +24,11 @@ const EMPTY: SlidePayload = {
 
 export default function PresentationView() {
   const [slide, setSlide] = useState<SlidePayload>(EMPTY);
+  const dragStripRef = useRef<HTMLDivElement>(null);
   const theme = useMemo(
     () =>
       slide.customTheme && isCustomThemeRecord(slide.customTheme)
-        ? buildCustomTheme(slide.customTheme)
+        ? themeFromRecord(slide.customTheme)
         : stageThemeById(songThemeId(slide)),
     [slide],
   );
@@ -63,6 +64,16 @@ export default function PresentationView() {
     };
   }, []);
 
+  useEffect(() => {
+    const strip = dragStripRef.current;
+    if (!strip) return;
+    const onDoubleClick = () => {
+      void window.primaVista?.exitPresentationFullscreen();
+    };
+    strip.addEventListener("dblclick", onDoubleClick);
+    return () => strip.removeEventListener("dblclick", onDoubleClick);
+  }, []);
+
   const hidden = slide.blackout || slide.clear || !slide.lines.length;
   const showTitle = Boolean(slide.titleSlide) && !hidden;
 
@@ -71,7 +82,10 @@ export default function PresentationView() {
       className="relative h-full w-full overflow-hidden"
       style={slide.blackout ? { background: "#000000" } : stageSurfaceStyle(theme)}
     >
-      <div className="absolute inset-x-0 top-0 z-10 h-8 [-webkit-app-region:drag]" />
+      <div
+        ref={dragStripRef}
+        className="absolute inset-x-0 top-0 z-10 h-8 [-webkit-app-region:drag]"
+      />
       {theme.frame && !slide.blackout && (
         <div
           className="pointer-events-none absolute inset-[3.5%] border"

@@ -2,6 +2,8 @@ import { useCallback, useRef, useState } from "react";
 import { confirmDialog } from "../lib/confirm";
 import {
   buildCustomTheme,
+  editableDefaultTheme,
+  isDefaultThemeId,
   songThemeId,
   STAGE_THEMES,
   stageThemeById,
@@ -12,8 +14,15 @@ import { usePresentation } from "../state/PresentationContext";
 import CustomThemeEditor from "./CustomThemeEditor";
 
 export default function ThemePicker() {
-  const { activeSong, setSongTheme, customThemes, addCustomTheme, deleteCustomTheme } =
-    usePresentation();
+  const {
+    activeSong,
+    setSongTheme,
+    customThemes,
+    defaultOverrides,
+    addCustomTheme,
+    deleteCustomTheme,
+    resetDefaultThemes,
+  } = usePresentation();
   const theme = stageThemeById(songThemeId(activeSong));
   const [editor, setEditor] = useState<{ kind: "create" } | { kind: "edit"; record: CustomThemeRecord } | null>(
     null,
@@ -35,6 +44,26 @@ export default function ThemePicker() {
       deleteCustomTheme(record.id);
       setEditor((current) => (current?.kind === "edit" && current.record.id === record.id ? null : current));
     }
+  };
+
+  const editDefault = (item: StageTheme) => {
+    const record = defaultOverrides.find((theme) => theme.id === item.id) ?? editableDefaultTheme(item);
+    setEditor({ kind: "edit", record });
+  };
+
+  const resetBuiltIns = () => {
+    if (defaultOverrides.length === 0) return;
+    if (
+      !confirmDialog(
+        "Reset the built-in themes to their original look? Custom themes will stay as they are.",
+      )
+    ) {
+      return;
+    }
+    resetDefaultThemes();
+    setEditor((current) =>
+      current?.kind === "edit" && isDefaultThemeId(current.record.id) ? null : current,
+    );
   };
 
   const chip = (item: StageTheme) => {
@@ -62,15 +91,66 @@ export default function ThemePicker() {
     );
   };
 
+  const canReset = defaultOverrides.length > 0;
+
   return (
-    <div className="relative flex flex-wrap items-center gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-        Song theme
-      </span>
-      <div role="radiogroup" aria-label="Theme for the selected song" className="flex flex-wrap gap-1.5">
-        {STAGE_THEMES.map((item) => (
-          <span key={item.id}>{chip(item)}</span>
-        ))}
+    <div className="relative">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+          Song theme
+        </span>
+        <button
+          type="button"
+          onClick={resetBuiltIns}
+          disabled={!canReset}
+          title={
+            canReset
+              ? "Restore the original built-in themes. Custom themes are not changed."
+              : "Built-in themes are already original"
+          }
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold tracking-wide transition disabled:cursor-default ${
+            canReset
+              ? "border-gold-400/50 bg-gold-500/15 text-gold-50 shadow-[0_0_18px_rgba(212,168,74,0.18)] hover:border-gold-300/70 hover:bg-gold-500/25"
+              : "border-white/20 bg-white/[0.04] text-stone-300"
+          }`}
+        >
+          Reset built-in themes
+        </button>
+      </div>
+      <div role="radiogroup" aria-label="Theme for the selected song" className="flex flex-wrap items-center gap-1.5">
+        {STAGE_THEMES.map((item) => {
+          const resolved = stageThemeById(item.id);
+          const editing = editor?.kind === "edit" && editor.record.id === item.id;
+          const overridden = defaultOverrides.some((theme) => theme.id === item.id);
+          return (
+            <span key={item.id} className="group relative">
+              {chip(overridden ? { ...resolved, blurb: `${item.blurb} · edited` } : resolved)}
+              <span
+                className={`absolute -right-1 -top-2 flex transition focus-within:opacity-100 group-hover:opacity-100 ${
+                  editing ? "opacity-100" : "opacity-0"
+                }`}
+              >
+                <button
+                  type="button"
+                  data-theme-editor-toggle
+                  aria-label={`Edit ${resolved.name} theme`}
+                  aria-expanded={editing}
+                  title="Edit theme"
+                  onClick={() => editDefault(item)}
+                  className={`flex h-4 w-4 items-center justify-center rounded-full border bg-sanctuary-800 transition ${
+                    editing
+                      ? "border-gold-400/60 text-gold-200"
+                      : "border-white/15 text-stone-400 hover:border-gold-400/50 hover:text-gold-200"
+                  }`}
+                >
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-2.5 w-2.5" aria-hidden="true">
+                    <path d="M2.695 14.763l-1.262 3.154a.5.5 0 0 0 .65.65l3.155-1.262a4 4 0 0 0 1.343-.885L17.5 5.5a2.121 2.121 0 0 0-3-3L3.58 13.42a4 4 0 0 0-.885 1.343Z" />
+                  </svg>
+                </button>
+              </span>
+            </span>
+          );
+        })}
         {customThemes.map((record) => {
           const editing = editor?.kind === "edit" && editor.record.id === record.id;
           return (

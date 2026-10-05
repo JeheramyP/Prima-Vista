@@ -113,6 +113,15 @@ function rendererUrl(hash = "") {
   return path.join(process.env.DIST as string, "index.html");
 }
 
+/** Leave fullscreen or maximized. A frameless window does not get the usual title-bar gesture. */
+function restorePresentationWindow() {
+  const win = presentationWindow;
+  if (!win || win.isDestroyed()) return false;
+  if (win.isFullScreen()) win.setFullScreen(false);
+  if (win.isMaximized()) win.unmaximize();
+  return win.isFullScreen();
+}
+
 function createControllerWindow() {
   controllerWindow = new BrowserWindow({
     width: 1480,
@@ -185,9 +194,25 @@ function createPresentationWindow() {
     presentationWindow.loadFile(rendererUrl(), { hash: "/presentation" });
   }
 
+  const sendFullscreen = (fullscreen: boolean) => {
+    controllerWindow?.webContents.send("presentation:fullscreen", fullscreen);
+  };
+
+  presentationWindow.on("enter-full-screen", () => sendFullscreen(true));
+  presentationWindow.on("leave-full-screen", () => sendFullscreen(false));
+
+  presentationWindow.webContents.on("before-input-event", (event, input) => {
+    if (input.type !== "keyDown" || input.key !== "Escape" || input.isAutoRepeat) return;
+    const win = presentationWindow;
+    if (!win || win.isDestroyed() || (!win.isFullScreen() && !win.isMaximized())) return;
+    event.preventDefault();
+    restorePresentationWindow();
+  });
+
   presentationWindow.on("closed", () => {
     presentationWindow = null;
     controllerWindow?.webContents.send("presentation:closed");
+    sendFullscreen(false);
   });
 
   presentationWindow.webContents.once("did-finish-load", () => {
@@ -200,6 +225,11 @@ app.whenReady().then(() => {
 
   ipcMain.handle("presentation:open", () => {
     createPresentationWindow();
+    const fullscreen =
+      !!presentationWindow &&
+      !presentationWindow.isDestroyed() &&
+      presentationWindow.isFullScreen();
+    controllerWindow?.webContents.send("presentation:fullscreen", fullscreen);
     return true;
   });
 
@@ -215,6 +245,8 @@ app.whenReady().then(() => {
     presentationWindow.setFullScreen(!presentationWindow.isFullScreen());
     return presentationWindow.isFullScreen();
   });
+
+  ipcMain.handle("presentation:exit-fullscreen", () => restorePresentationWindow());
 
   ipcMain.handle("slide:get", () => lastSlide);
 

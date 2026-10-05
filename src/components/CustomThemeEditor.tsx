@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createCustomThemeId } from "../lib/customThemes";
 import {
-  buildCustomTheme,
   CUSTOM_FILLS,
   customChip,
+  isDefaultThemeId,
   stageLyricStyle,
   stageSurfaceStyle,
+  themeFromRecord,
   type CustomFill,
   type CustomThemeRecord,
 } from "../lib/stageThemes";
@@ -65,10 +66,17 @@ export default function CustomThemeEditor({
   const [minStops, maxStops] = CUSTOM_FILLS.find((option) => option.id === fill)!.stops;
   const colors = palette.slice(0, count);
 
+  const editingBuiltIn = Boolean(initial && isDefaultThemeId(initial.id));
   const preview = useMemo(
     () =>
-      buildCustomTheme({ id: "preview", name: name || suggestedName, fill, colors, angle }),
-    [angle, colors.join(), fill, name, suggestedName],
+      themeFromRecord({
+        id: initial?.id ?? "preview",
+        name: name || suggestedName,
+        fill,
+        colors,
+        angle,
+      }),
+    [angle, colors.join(), fill, initial?.id, name, suggestedName],
   );
 
   useEffect(() => {
@@ -124,7 +132,7 @@ export default function CustomThemeEditor({
     <div
       ref={panelRef}
       role="dialog"
-      aria-label={initial ? "Edit custom theme" : "New custom theme"}
+      aria-label={editingBuiltIn ? "Edit built-in theme" : initial ? "Edit custom theme" : "New custom theme"}
       className="absolute left-0 top-full z-30 mt-2 max-h-[calc(100vh-11rem)] w-[380px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-sanctuary-950/95 p-4 shadow-stage backdrop-blur"
     >
       <div
@@ -252,6 +260,12 @@ export default function CustomThemeEditor({
             className="w-full accent-gold-400"
           />
         </label>
+      )}
+
+      {editingBuiltIn && (
+        <p className="mb-3 text-xs leading-relaxed text-stone-500">
+          Saving replaces this built-in look. Reset built-in themes restores the originals and leaves custom themes alone.
+        </p>
       )}
 
       <div className="flex justify-end gap-2">

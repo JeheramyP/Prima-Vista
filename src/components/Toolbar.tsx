@@ -37,6 +37,7 @@ export default function Toolbar() {
     blackout,
     clear,
     presentationOpen,
+    presentationFullscreen,
     prev,
     next,
     setBlackout,
@@ -84,8 +85,12 @@ export default function Toolbar() {
         </ControlButton>
         {presentationOpen ? (
           <>
-            <ControlButton onClick={() => void toggleFullscreen()}>Fullscreen output</ControlButton>
-            <ControlButton onClick={() => void closePresentation()}>Close output</ControlButton>
+            <ControlButton onClick={() => void toggleFullscreen()}>
+              {presentationFullscreen ? "Exit fullscreen" : "Fullscreen output"}
+            </ControlButton>
+            <ControlButton danger active onClick={() => void closePresentation()}>
+              Close output
+            </ControlButton>
           </>
         ) : (
           <ControlButton active onClick={() => void openPresentation()}>
