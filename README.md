@@ -4,7 +4,7 @@ Desktop lyric presentation software for churches, youth groups, and worship gath
 
 # Inspiration
 
-Italian for "at first sight," prima vista is a musical phrase meaning sight-reading. This application is meant to provide an at-a-glance overview of the whole setlist.
+Italian for "at first sight," prima vista is a musical phrase meaning sight-reading. This application is meant to provide an at-a-glance overview of the program, including the setlist and full lyrics of the current song.
 
 No more guessing what comes next - overview all the lyrics and make necessary edits on the fly. No more tedious Google Slides work, either. Adding songs is as easy as copy-pasting the full lyrics. Customizable background themes give each song an appropriate vibe. Highly customizable, easily navigable, extremely stress-free.
 
@@ -15,6 +15,10 @@ No more guessing what comes next - overview all the lyrics and make necessary ed
 - **Electron IPC** keeps the live slide in sync between the two windows.
 
 ## Run locally
+
+To install the application as a desktop app, run the installer for the operating system being used. Windows runs .exe, Linux runs .AppImage or .deb.
+
+Clone from the GitHub repo, then run:
 
 ```bash
 npm install
