@@ -1,9 +1,9 @@
 /**
  * Kind chip with a number menu.
  *
- * The same kind and number means the same part. In the paste roadmap that
- * reuses one pasted paragraph. Options are the numbers already in use for
- * this kind, plus the next new number.
+ * The number is the label on the slide (Chorus 1, Chorus 2). In the paste
+ * roadmap it does not choose which paragraph is read. Options are the numbers
+ * already in use for this kind, plus the next new number.
  */
 import { kindName, kindTone } from "../lib/slides";
 import type { SectionKind } from "../types";
@@ -30,7 +30,7 @@ export default function SectionNumberSelect({
         value={value}
         onChange={(event) => onChange(Number(event.target.value))}
         aria-label={`${name} number`}
-        title={`Same number as another ${name.toLowerCase()} means the same lyrics`}
+        title={`Label this ${name.toLowerCase()}`}
         className="cursor-pointer rounded-full bg-black/25 py-0 pl-1.5 pr-0.5 text-[10px] font-semibold text-inherit outline-none focus:ring-1 focus:ring-gold-400/40"
       >
         {options.map((option) => (

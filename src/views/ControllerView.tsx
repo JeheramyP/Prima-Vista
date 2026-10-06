@@ -54,6 +54,21 @@ export default function ControllerView() {
 
       if (event.ctrlKey || event.metaKey || event.altKey) return;
 
+      // Holding these keys must not retrigger. Space and arrows still need
+      // preventDefault so the page does not scroll on the repeated events.
+      const ignoreRepeat =
+        event.code === "Space" ||
+        event.key === "ArrowLeft" ||
+        event.key === "ArrowRight" ||
+        event.key === "ArrowUp" ||
+        event.key === "ArrowDown" ||
+        event.key.toLowerCase() === "b" ||
+        event.key.toLowerCase() === "c";
+      if (event.repeat && ignoreRepeat) {
+        event.preventDefault();
+        return;
+      }
+
       if (
         event.code === "Space" ||
         event.key === "ArrowRight" ||

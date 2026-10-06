@@ -2,7 +2,7 @@
  * Section and slide helpers.
  *
  * Turns a song into the slide list the controller shows and the output
- * follows: one generated title slide, then two lyric lines per slide.
+ * follows: one generated title slide, then four lyric lines per slide.
  * Also owns section labels, the editor palette, and card reorder helpers.
  * Slide ids (`${sectionId}-${chunk}` and `${songId}:title`) are what
  * Update slides uses to stay on the same cue after a rebuild.
@@ -10,7 +10,7 @@
 import type { LyricSection, SectionKind, Slide, Song, SongDraft } from "../types";
 
 /** Lyric slides hold this many lines. The title slide is separate and holds the song name. */
-const LINES_PER_SLIDE = 2;
+const LINES_PER_SLIDE = 4;
 
 export const SECTION_KIND_DRAG_TYPE = "application/x-prima-vista-section-kind";
 export const SECTION_ID_DRAG_TYPE = "application/x-prima-vista-section";
@@ -42,7 +42,7 @@ export const EMPTY_DRAFT: SongDraft = {
   sections: [],
 };
 
-/** One slide per pair of lines, in section order. An empty section still yields one slide. */
+/** One slide per four lines, in section order. An empty section still yields one slide. */
 export function sectionsToSlides(sections: LyricSection[]): Slide[] {
   const slides: Slide[] = [];
   withSectionLabels(sections).forEach((section) => {

@@ -15,7 +15,7 @@ import { usePresentation } from "../state/PresentationContext";
 const NEW_SONG_COOLDOWN_MS = 1000;
 
 export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
-  const { results, activeSong, selectSong, createNewSong, deleteSong, addToSetlist } =
+  const { query, results, activeSong, selectSong, createNewSong, deleteSong, addToSetlist } =
     usePresentation();
   const listRef = useRef<HTMLDivElement>(null);
   const newSongCoolingDownRef = useRef(false);
@@ -74,7 +74,7 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
       >
         {results.length === 0 && (
           <p className="rounded-xl border border-dashed border-white/10 px-3 py-6 text-center text-sm text-stone-500">
-            No matching songs in the library.
+            {query.trim() ? "No matching songs in the library." : "No songs yet."}
           </p>
         )}
         {results.map((song) => {

@@ -76,7 +76,7 @@ Click a song to edit and present it. That leaves setlist follow: the next cue is
 
 **Delete** asks for confirmation, removes the song from the library and the setlist, and selects another song if you deleted the one on screen.
 
-The first time Prima Vista runs, the library is Amazing Grace, How Great Thou Art, In Christ Alone, 10,000 Reasons, Goodness of God, Great Are You Lord, Build My Life, and Holy Spirit. After that, the copy on this computer is the one that loads. Editing those hymns does not change the originals shipped with the app until you delete the saved library file.
+The first time Prima Vista runs, the library is empty. Songs you add are saved on this computer and load the next time you open the app.
 
 ## Themes
 
@@ -122,7 +122,7 @@ Build the song as cards.
 
 1. Fill in title, artist, and key. The key is for the operator. It is not shown on the output.
 2. Drag **Verse**, **Chorus**, **Bridge**, **Instrumental**, or **Tag** into the arrangement, or drop one between cards.
-3. Type lyrics on each card. Each pair of lines becomes one slide. A card that says "2 slides" will produce two lyric slides after you update.
+3. Type lyrics on each card. Every four lyric lines become one slide. A card that says "2 slides" will produce two lyric slides after you update.
 4. Drag a card's handle to reorder it. Duplicate a card when a part returns with the same words. Change the number chip when it should be labeled as the same part (`Chorus 1` sung again) or a new one (`Chorus 2`).
 5. Press **Update slides** or Ctrl/Cmd+Enter.
 
@@ -136,13 +136,13 @@ Use this when you already have the full lyrics in another app.
 
 1. Paste the song into the text box. A blank line, or a header such as `[Verse 1]`, `(Chorus)`, `Bridge:`, or `Chorus x2`, starts a new block. The header line itself is discarded.
 2. Drag section kinds into the roadmap on the right, in the order the song is sung.
-3. Each new part takes the next pasted block. A later step with the same kind and number, such as a second Chorus 1, reuses that block. Instrumental steps take no block.
+3. Each roadmap step takes the next pasted block, in order. A second Chorus 1 reads the next paragraph from the lyric field. Instrumental steps take no block.
 4. The number menu offers every number already used for that kind, plus the next new number.
 5. **Update slides** writes the arrangement into the song.
 
 Unused pasted paragraphs stay in the text box until you clear them. They are kept if you leave the editor and come back, as long as the song's sections have not changed underneath you.
 
-Switching an existing song into copy-paste rebuilds the text from its sections. Each kind and number contributes one paragraph, taken from the first card of that part that has lyrics. Empty parts are left out of the text so they do not steal a paragraph from the next part. Instrumentals stay in the roadmap.
+Switching an existing song into copy-paste rebuilds the text from its sections. Each lyric section contributes one paragraph, in order, including a repeated Chorus 1. Empty parts are left out of the text so they do not steal a paragraph from the next part. Instrumentals stay in the roadmap.
 
 ## Title slides
 

@@ -276,7 +276,7 @@ export default function PasteLyricsMode() {
               the lyrics.
             </p>
           )}
-          {assignments.map(({ step, label, block, reused }, index) => {
+          {assignments.map(({ step, label, block }, index) => {
             const lines = block === null ? [] : blocks[block];
             const instrumental = step.kind === "instrumental";
             const count = slideCount(lines);
@@ -307,14 +307,6 @@ export default function PasteLyricsMode() {
                       options={sectionNumberOptions(steps, step.kind)}
                       onChange={(number) => commit(text, renumberStep(steps, step.id, number))}
                     />
-                    {reused && (
-                      <span
-                        className="text-[10px] text-stone-500"
-                        title={`Uses the same lyrics as the first ${label}`}
-                      >
-                        same lyrics
-                      </span>
-                    )}
                     {lines.length > 0 && (
                       <span className="text-[10px] text-stone-500">
                         {count === 1 ? "1 slide" : `${count} slides`}

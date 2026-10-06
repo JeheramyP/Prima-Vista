@@ -42,7 +42,7 @@ The output never looks up songs or themes on its own. A custom or edited built-i
 The controller is three columns:
 
 1. **Setlist.** An ordered run of songs for this gathering. The same song can appear more than once. Drag a library row in, reorder rows, or remove them. Advancing past the last slide of a song moves to the next setlist song. Stepping back from the first slide moves to the previous song's last slide.
-2. **Library.** Search by title, artist, or lyric line. The first launch seeds eight bundled hymns. Later edits replace that seed on disk.
+2. **Library.** Search by title, artist, or lyric line. A fresh install starts with an empty library. Songs you add are saved on this computer.
 3. **Stage.** Current and next preview, theme picker, then either the slide grid or the lyric editor.
 
 **Blackout** paints the output solid black. **Clear** hides the words and keeps the song's background. The two modes cancel each other. Moving to the next song in the setlist keeps whichever mode is on. Choosing a song from the library turns both off.
@@ -54,9 +54,9 @@ A song is a title, artist, optional musical key, optional theme, and an ordered 
 Slides are derived, not stored:
 
 - The first slide is a title card built from the song title and artist. It is not a section.
-- Remaining slides take the sections in order. Every two lyric lines become one slide. A section with no lines still produces one empty slide.
+- Remaining slides take the sections in order. Every four lyric lines become one slide. A section with no lines still produces one empty slide.
 
-Verse, chorus, and "other" sections always show a number (`Chorus 2`). Other kinds show a number only when that kind is used more than once. Sections with the same kind and number are the same part. In the copy-paste editor, a repeated part reuses the earlier paragraph instead of consuming another block of pasted text.
+Verse, chorus, and "other" sections always show a number (`Chorus 2`). Other kinds show a number only when that kind is used more than once. In the copy-paste editor, each roadmap step reads the next block of the lyric field, including when the same kind and number appears again.
 
 The section editor edits a draft. **Update slides** (or Ctrl/Cmd+Enter) writes that draft into the library, rebuilds slides, and tries to stay on the same slide. A brand-new song is different: its draft is mirrored into the library as you type, so the title card and the song list update before you press Update slides.
 
@@ -64,7 +64,7 @@ The section editor edits a draft. **Update slides** (or Ctrl/Cmd+Enter) writes t
 
 | Data | Location | Notes |
 | --- | --- | --- |
-| Song library | `song-library.json` in Electron `userData` | Whole file replaced on each save. First launch writes the bundled hymns. |
+| Song library | `song-library.json` in Electron `userData` | Whole file replaced on each save. A fresh install writes an empty library. |
 | Custom themes and built-in edits | `custom-themes.json` in the same folder | Built-in theme ids that appear here are edits of Sanctuary, Midnight, and the rest. Other ids are user-made themes. |
 | Setlist | `localStorage` key `prima-vista-setlist` | Stays on this machine's controller profile. It is not inside the song file. Songs deleted from the library are dropped from the setlist after the library loads. |
 

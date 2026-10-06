@@ -149,25 +149,25 @@ Section kinds: `verse`, `chorus`, `bridge`, `prechorus`, `tag`, `instrumental`, 
 
 `displayLabel` always appends the number for verse, chorus, and other. Every other kind is numbered only when more than one distinct number of that kind exists, so a single bridge reads "Bridge".
 
-`LINES_PER_SLIDE` is 2. Slide ids are `${section.id}-${chunkIndex}`. The title slide id is `${song.id}:title`. `applyEditor` uses those ids to keep the live index stable.
+`LINES_PER_SLIDE` is 4. Slide ids are `${section.id}-${chunkIndex}`. The title slide id is `${song.id}:title`. `applyEditor` uses those ids to keep the live index stable.
 
 ### Paste roadmap
 
 `splitLyricBlocks` splits on blank lines and on header lines matching verse, chorus, pre-chorus, bridge, tag, intro, outro, ending, instrumental, interlude, refrain, or hook, with optional brackets, a number, and an `x2` repeat mark.
 
-`assignBlocks` walks the roadmap. Instrumental steps get no block. The first step of each `kind:number` takes the next unused block. Later steps with that key set `reused` and point at the same block. If the roadmap is longer than the pasted text, extra steps get `block: null` and empty lines.
+`assignBlocks` walks the roadmap in order. Instrumental steps get no block. Every other step takes the next unused block, including a later step with the same kind and number. If the roadmap is longer than the pasted text, extra steps get `block: null` and empty lines.
 
-`sectionsToPasteState` is the reverse. It drops lyric parts that have no lines so an empty card does not consume a paragraph that belongs to the next part.
+`sectionsToPasteState` is the reverse. Each lyric section with lines becomes its own paragraph, in section order, so a repeated Chorus 1 keeps the words from that card. It drops lyric parts that have no lines so an empty card does not consume a paragraph that belongs to the next part.
 
 `PasteLyricsMode` keeps `pasteCache` outside React so unused pasted text survives unmounting the editor. The cache is reused only when the song id and a signature of the draft sections still match.
 
 ## Library file
 
-`SONG_LIBRARY` in `src/lib/songs.ts` is both the seed and the live store. `loadLibrary`:
+`SONG_LIBRARY` in `src/lib/songs.ts` is the live store. It starts empty. `loadLibrary`:
 
 1. Asks the preload for `song-library.json`.
 2. If the file exists and every record has `id`, `title`, `artist`, and `sections`, replaces the in-memory array.
-3. If the file is missing (`null`), writes the bundled seed so the next launch is stable.
+3. If the file is missing (`null`), writes an empty library so the next launch is stable.
 4. A corrupt file also returns `null` from the main process when it is not an array. Individual records that fail the main-process check are dropped. The renderer then rejects the whole array unless `every` record passes `isSong`.
 
 Search is local. `normalize` lowercases and turns non-alphanumeric runs into spaces. The haystack is title, artist, and every lyric line.

@@ -2,16 +2,15 @@
  * Copy-paste lyric import.
  *
  * Splits pasted text into blocks on blank lines and section headers, then
- * walks a roadmap of kind/number steps. The first step of each kind and
- * number consumes the next block. A later step with the same pair reuses
- * it. Instrumental steps take no block.
+ * walks a roadmap in order. Each lyric step consumes the next block, including
+ * a later step with the same kind and number. Instrumental steps take no block.
  */
 import type { LyricSection, SectionKind } from "../types";
 import { sectionNumberOptions, withSectionLabels } from "./slides";
 
 /**
- * One block in the song roadmap. Steps with the same kind and number share one
- * pasted paragraph, so Chorus 1 sung twice only needs to be pasted once.
+ * One block in the song roadmap. Kind and number are the label shown on the
+ * slide. They do not decide which pasted paragraph the step reads.
  */
 export type RoadmapStep = {
   id: string;
@@ -24,8 +23,6 @@ export type RoadmapAssignment = {
   label: string;
   /** Index into the pasted blocks, or null when the step has no lyrics. */
   block: number | null;
-  /** An earlier step with the same kind and number already took this block. */
-  reused: boolean;
 };
 
 const HEADER_WORD =
@@ -54,10 +51,6 @@ export function splitLyricBlocks(text: string): string[][] {
   return blocks;
 }
 
-function partKey(step: { kind: SectionKind; number: number }) {
-  return `${step.kind}:${step.number}`;
-}
-
 export function createStep(kind: SectionKind, number: number): RoadmapStep {
   return { id: `sec-${crypto.randomUUID()}`, kind, number };
 }
@@ -67,25 +60,21 @@ export function nextStepNumber(steps: RoadmapStep[], kind: SectionKind) {
 }
 
 /**
- * Walks the roadmap and gives each new kind and number the next unused pasted
- * block. Later steps with the same kind and number reuse it. Instrumentals take no block.
+ * Walks the roadmap in order and gives each lyric step the next pasted block.
+ * A repeated kind and number, such as a second Chorus 1, still takes the next
+ * block from the lyric field. Instrumentals take no block.
  */
 export function assignBlocks(steps: RoadmapStep[], blockCount: number) {
   const labels = withSectionLabels(
     steps.map((step) => ({ id: step.id, kind: step.kind, number: step.number, label: "", lines: [] })),
   );
-  const blockOf = new Map<string, number | null>();
   let used = 0;
   const assignments: RoadmapAssignment[] = steps.map((step, index) => {
     const label = labels[index].label;
-    if (step.kind === "instrumental") return { step, label, block: null, reused: false };
-    const key = partKey(step);
-    const reused = blockOf.has(key);
-    if (!reused) {
-      blockOf.set(key, used < blockCount ? used : null);
-      if (used < blockCount) used += 1;
-    }
-    return { step, label, block: blockOf.get(key) ?? null, reused };
+    if (step.kind === "instrumental") return { step, label, block: null };
+    const block = used < blockCount ? used : null;
+    if (block !== null) used += 1;
+    return { step, label, block };
   });
   return { assignments, used };
 }
@@ -102,28 +91,25 @@ export function roadmapToSections(steps: RoadmapStep[], blocks: string[][]): Lyr
 }
 
 /**
- * Rebuilds paste text and a roadmap from existing sections. Each kind and
- * number contributes one paragraph, from its first section with lyrics.
- * Parts with no lyrics are dropped, since they would take a pasted block
- * that belongs to the next part.
+ * Rebuilds paste text and a roadmap from existing sections. Each lyric
+ * section with lines contributes its own paragraph, in order, so a repeated
+ * Chorus 1 keeps the words on that card. Parts with no lyrics are dropped,
+ * since they would take a pasted block that belongs to the next part.
  */
 export function sectionsToPasteState(sections: LyricSection[]): {
   text: string;
   steps: RoadmapStep[];
 } {
   const blocks: string[] = [];
-  const seen = new Set<string>();
   const steps: RoadmapStep[] = [];
   for (const section of withSectionLabels(sections)) {
     const step = { id: section.id, kind: section.kind, number: section.number ?? 1 };
-    const key = partKey(step);
-    if (section.kind === "instrumental" || seen.has(key)) {
+    if (section.kind === "instrumental") {
       steps.push(step);
       continue;
     }
     const lines = section.lines.map((line) => line.trim()).filter(Boolean);
     if (!lines.length) continue;
-    seen.add(key);
     blocks.push(lines.join("\n"));
     steps.push(step);
   }

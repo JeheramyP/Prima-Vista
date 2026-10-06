@@ -227,8 +227,7 @@ export default function LyricEditor() {
           <PasteLyricsMode />
           <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
             A title slide is added automatically. Each block takes the next paragraph of the lyrics
-            in roadmap order. A block numbered like an earlier one, such as a second Chorus 1, reuses
-            its lyrics instead. Every two lyric lines become one slide.
+            in roadmap order, including a repeated Chorus 1. Every four lyric lines become one slide.
           </p>
         </>
       ) : (
@@ -353,7 +352,7 @@ export default function LyricEditor() {
           <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
             A title slide is added automatically. Drag a block into the song, or click one to add
             it. Drag a card handle to reorder. Use the number next to a section name to label it
-            Chorus 1, Chorus 2, and so on. Every two lyric lines become one slide.
+            Chorus 1, Chorus 2, and so on. Every four lyric lines become one slide.
           </p>
         </>
       )}
