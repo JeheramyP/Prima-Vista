@@ -47,9 +47,15 @@ export default function PresentationView() {
     const boot = async () => {
       const api = window.primaVista;
       if (api) {
-        unsub = api.onSlideUpdate(setSlide);
+        // A slide:update can land while getSlide() is in flight. That reply is
+        // older than the update, so applying it would paint the previous slide.
+        let updateSinceRequest = false;
+        unsub = api.onSlideUpdate((payload) => {
+          updateSinceRequest = true;
+          setSlide(payload);
+        });
         const current = await api.getSlide();
-        if (!cancelled) setSlide(current);
+        if (!cancelled && !updateSinceRequest) setSlide(current);
         return;
       }
       setSlide({

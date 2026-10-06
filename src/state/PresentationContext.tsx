@@ -115,10 +115,10 @@ type PresentationState = {
   /** Saved edits of the built-in themes. Absent themes still use the original look. */
   defaultOverrides: CustomThemeRecord[];
   /** Saves the theme and applies it to the selected song. */
-  addCustomTheme: (theme: CustomThemeRecord) => void;
-  deleteCustomTheme: (id: string) => void;
+  addCustomTheme: (theme: CustomThemeRecord) => Promise<void>;
+  deleteCustomTheme: (id: string) => Promise<void>;
   /** Restores every edited built-in theme. Custom themes are left as they are. */
-  resetDefaultThemes: () => void;
+  resetDefaultThemes: () => Promise<void>;
   goTo: (index: number) => void;
   next: () => void;
   prev: () => void;
@@ -171,6 +171,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const slidesRef = useRef(slides);
   slidesRef.current = slides;
   const selectionTouchedRef = useRef(false);
+  /** Edits to the current provisional blank. Inserting that blank does not set this. */
+  const provisionalEditedRef = useRef(false);
   const libraryReadyRef = useRef(false);
   libraryReadyRef.current = libraryReady;
   const pendingNewIdRef = useRef<string | null>(null);
@@ -179,6 +181,9 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const updatingSlidesTimerRef = useRef<number | null>(null);
   const setDraft = useCallback<Dispatch<SetStateAction<SongDraft>>>((value) => {
     selectionTouchedRef.current = true;
+    if (provisionalNewSong && activeSongRef.current?.id === provisionalNewSong.id) {
+      provisionalEditedRef.current = true;
+    }
     setDraftState(value);
   }, []);
 
@@ -508,7 +513,9 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
 
   /**
    * Inserts a blank song and mirrors its draft into the library while it stays
-   * selected. A second call within a second reuses an untouched blank.
+   * selected. A second call within a second reuses that blank when its draft
+   * has not been edited. The first insert still marks the selection as touched
+   * so a late library load does not replace the new song.
    */
   const createNewSong = useCallback(() => {
     const provisional = provisionalNewSong
@@ -517,8 +524,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     if (
       provisional &&
       isUntouchedBlank(provisional) &&
-      Date.now() - (provisionalNewSong?.createdAt ?? 0) < PROVISIONAL_REUSE_MS &&
-      !selectionTouchedRef.current
+      !provisionalEditedRef.current &&
+      Date.now() - (provisionalNewSong?.createdAt ?? 0) < PROVISIONAL_REUSE_MS
     ) {
       adoptSong(provisional);
       return;
@@ -532,6 +539,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       sections: [],
     };
     provisionalNewSong = { id: blank.id, createdAt: Date.now() };
+    provisionalEditedRef.current = false;
     pendingNewIdRef.current = blank.id;
     mirroredNewIdsRef.current.add(blank.id);
     selectionTouchedRef.current = true;
@@ -596,24 +604,39 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   }, [activeSong]);
 
   const addCustomTheme = useCallback(
-    (theme: CustomThemeRecord) => {
+    async (theme: CustomThemeRecord) => {
       const updating = isDefaultThemeId(theme.id) || CUSTOM_THEMES.some((item) => item.id === theme.id);
       // The theme is registered synchronously, before the write finishes.
-      void saveCustomTheme(theme);
+      const write = saveCustomTheme(theme);
       setSavedThemes([...CUSTOM_THEMES]);
       if (!updating) setSongTheme(theme.id);
+      try {
+        await write;
+      } catch {
+        // The theme is already on screen. The controller banner reports the failed write.
+      }
     },
     [setSongTheme],
   );
 
-  const deleteCustomTheme = useCallback((id: string) => {
-    void deleteCustomThemeFromLibrary(id);
+  const deleteCustomTheme = useCallback(async (id: string) => {
+    const write = deleteCustomThemeFromLibrary(id);
     setSavedThemes([...CUSTOM_THEMES]);
+    try {
+      await write;
+    } catch {
+      // In-memory removal still applies. The controller banner reports the failed write.
+    }
   }, []);
 
-  const resetDefaultThemes = useCallback(() => {
-    void resetStoredDefaultThemes();
+  const resetDefaultThemes = useCallback(async () => {
+    const write = resetStoredDefaultThemes();
     setSavedThemes([...CUSTOM_THEMES]);
+    try {
+      await write;
+    } catch {
+      // In-memory reset still applies. The controller banner reports the failed write.
+    }
   }, []);
 
   /**

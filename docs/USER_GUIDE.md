@@ -152,7 +152,7 @@ On a new song, the title card follows what you type before you press Update slid
 
 ## If a save fails
 
-A banner under the header appears when the song library cannot be written. The change is still on screen. It can be lost if you quit before a later save succeeds. Theme saves do not use that banner. Check that the app can write its user-data folder if saves keep failing.
+A banner under the header appears when the song library or the theme file cannot be written. The change is still on screen. It can be lost if you quit before a later save succeeds. Check that the app can write its user-data folder if saves keep failing.
 
 ## Keyboard focus after a confirmation
 

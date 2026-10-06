@@ -2,45 +2,25 @@
  * Library column.
  *
  * Lists search results, selects a song, and starts a drag of
- * `application/x-prima-vista-song` for the setlist. New song is cooled down
- * for a second so a double-click cannot create two blanks. Delete confirms
- * before removing the song from the library and the setlist.
+ * `application/x-prima-vista-song` for the setlist. New song calls
+ * `createNewSong`, which reuses an untouched blank if it fires again within
+ * a second. Delete confirms before removing the song from the library and
+ * the setlist.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { confirmDialog } from "../lib/confirm";
 import { beginDragClickGuard, endDragClickGuard, ignoreClickAfterDrag } from "../lib/dragClick";
 import { SONG_DRAG_TYPE } from "../lib/setlist";
 import { usePresentation } from "../state/PresentationContext";
 
-const NEW_SONG_COOLDOWN_MS = 1000;
-
 export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
   const { query, results, activeSong, selectSong, createNewSong, deleteSong, addToSetlist } =
     usePresentation();
   const listRef = useRef<HTMLDivElement>(null);
-  const newSongCoolingDownRef = useRef(false);
-  const newSongCooldownTimerRef = useRef<number | null>(null);
-  const [newSongCoolingDown, setNewSongCoolingDown] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (newSongCooldownTimerRef.current !== null) {
-        window.clearTimeout(newSongCooldownTimerRef.current);
-      }
-    };
-  }, []);
 
   function handleNewSong() {
-    if (newSongCoolingDownRef.current) return;
-    newSongCoolingDownRef.current = true;
-    setNewSongCoolingDown(true);
     createNewSong();
     onNewSong?.();
-    newSongCooldownTimerRef.current = window.setTimeout(() => {
-      newSongCooldownTimerRef.current = null;
-      newSongCoolingDownRef.current = false;
-      setNewSongCoolingDown(false);
-    }, NEW_SONG_COOLDOWN_MS);
   }
 
   useEffect(() => {
@@ -60,9 +40,8 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
         <span className="ml-auto text-[11px] text-stone-500">{results.length}</span>
         <button
           type="button"
-          disabled={newSongCoolingDown}
           onClick={handleNewSong}
-          className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[11px] font-medium text-gold-200 transition hover:bg-gold-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[11px] font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
           New
         </button>

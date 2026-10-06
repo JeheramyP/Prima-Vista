@@ -42,11 +42,18 @@ export const EMPTY_DRAFT: SongDraft = {
   sections: [],
 };
 
+/** Lyric lines, or an empty list when a section was stored without them. */
+function sectionLines(section: { lines?: unknown } | null | undefined): string[] {
+  if (!section || !Array.isArray(section.lines)) return [];
+  if (section.lines.every((line) => typeof line === "string")) return section.lines;
+  return section.lines.filter((line): line is string => typeof line === "string");
+}
+
 /** One slide per four lines, in section order. An empty section still yields one slide. */
 export function sectionsToSlides(sections: LyricSection[]): Slide[] {
   const slides: Slide[] = [];
   withSectionLabels(sections).forEach((section) => {
-    const chunks = chunkLines(section.lines, LINES_PER_SLIDE);
+    const chunks = chunkLines(sectionLines(section), LINES_PER_SLIDE);
     chunks.forEach((lines, chunkIndex) => {
       slides.push({
         id: `${section.id}-${chunkIndex}`,
@@ -77,11 +84,12 @@ export function titleSlideForSong(song: Pick<Song, "id" | "title" | "artist">): 
 
 /** Title card first, then the section slides. The title card is not stored on the song. */
 export function songToSlides(song: Song): Slide[] {
-  return [titleSlideForSong(song), ...sectionsToSlides(song.sections)];
+  const sections = Array.isArray(song?.sections) ? song.sections : [];
+  return [titleSlideForSong(song), ...sectionsToSlides(sections)];
 }
 
 function chunkLines(lines: string[], size: number): string[][] {
-  if (!lines.length) return [[]];
+  if (!lines?.length) return [[]];
   const chunks: string[][] = [];
   for (let i = 0; i < lines.length; i += size) {
     chunks.push(lines.slice(i, i + size));
@@ -131,19 +139,25 @@ export function displayLabel(kind: SectionKind, number: number, partsOfKind: num
  * sections of a kind with identical lyrics share a number, others count up.
  */
 export function withSectionLabels(sections: LyricSection[]): LyricSection[] {
+  const list = Array.isArray(sections)
+    ? sections.filter((section): section is LyricSection => !!section && typeof section === "object")
+    : [];
   const used = new Map<SectionKind, Set<number>>();
-  for (const section of sections) {
+  for (const section of list) {
     if (section.number === undefined) continue;
     const set = used.get(section.kind) ?? new Set<number>();
     set.add(section.number);
     used.set(section.kind, set);
   }
   const byLyrics = new Map<string, number>();
-  const numbered = sections.map((section) => {
+  const numbered = list.map((section) => {
     if (section.number !== undefined) return section;
     const set = used.get(section.kind) ?? new Set<number>();
     used.set(section.kind, set);
-    const lyrics = section.lines.map((line) => line.trim()).filter(Boolean).join("\n");
+    const lyrics = sectionLines(section)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .join("\n");
     const key = `${section.kind}\n${lyrics}`;
     let number = lyrics ? byLyrics.get(key) : undefined;
     if (number === undefined) {
@@ -156,6 +170,7 @@ export function withSectionLabels(sections: LyricSection[]): LyricSection[] {
   });
   return numbered.map((section) => ({
     ...section,
+    lines: sectionLines(section),
     label: displayLabel(section.kind, section.number!, used.get(section.kind)?.size ?? 1),
   }));
 }
@@ -182,7 +197,9 @@ export function nextSectionNumber(sections: LyricSection[], kind: SectionKind) {
 export function cleanSectionLines(sections: LyricSection[]): LyricSection[] {
   return sections.map((section) => ({
     ...section,
-    lines: section.lines.map((line) => line.trim()).filter((line) => line.length > 0),
+    lines: sectionLines(section)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0),
   }));
 }
 
@@ -193,7 +210,7 @@ export function songToDraft(song: Song): SongDraft {
     key: song.key ?? "",
     sections: withSectionLabels(song.sections).map((section) => ({
       ...section,
-      lines: [...section.lines],
+      lines: [...sectionLines(section)],
     })),
   };
 }
@@ -242,7 +259,7 @@ export function duplicateSection(sections: LyricSection[], id: string) {
   const source = withSectionLabels(sections)[index];
   const copy: LyricSection = {
     ...createSection(source.kind, source.number),
-    lines: [...source.lines],
+    lines: [...sectionLines(source)],
   };
   return insertSection(sections, index + 1, copy);
 }

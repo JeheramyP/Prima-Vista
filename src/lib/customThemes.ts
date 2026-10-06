@@ -5,6 +5,7 @@
  * Loads and saves go through the preload when Electron is present, and
  * through `localStorage` otherwise. `registerCustomThemes` runs after every
  * change so the stage resolver sees the new paint records immediately.
+ * A failed write is reported on the controller banner and left in memory.
  */
 import {
   isCustomThemeRecord,
@@ -40,17 +41,56 @@ async function readPersistedThemes(): Promise<CustomThemeRecord[] | null> {
 
 async function commitPersistedThemes(themes: CustomThemeRecord[]) {
   if (window.primaVista?.saveThemes) {
-    await window.primaVista.saveThemes(themes);
+    const saved = await window.primaVista.saveThemes(themes);
+    if (!saved) throw new Error("Couldn't save themes.");
     return;
   }
   localStorage.setItem(STORAGE_KEY, JSON.stringify(themes));
 }
 
+const THEME_SAVE_FAILURE =
+  "Couldn't save themes. Your latest changes are still on screen and may be lost if you quit.";
+
+let themeSaveError: string | null = null;
+const themeSaveListeners = new Set<(message: string | null) => void>();
+
+export function subscribeThemeSaveError(listener: (message: string | null) => void) {
+  listener(themeSaveError);
+  themeSaveListeners.add(listener);
+  return () => {
+    themeSaveListeners.delete(listener);
+  };
+}
+
+function reportThemeSaveError(message: string | null) {
+  themeSaveError = message;
+  for (const listener of themeSaveListeners) listener(message);
+}
+
+function themeSaveMessage(error: unknown) {
+  const raw = error instanceof Error ? error.message : "";
+  const detail = raw.replace(/^Error invoking remote method '[^']+':\s*/, "").trim();
+  if (!detail || detail.startsWith("Couldn't save themes")) return THEME_SAVE_FAILURE;
+  return `${THEME_SAVE_FAILURE}\n${detail}`;
+}
+
 let themeWriteTail: Promise<void> = Promise.resolve();
 
-/** Same one-at-a-time rule as the song library, so a slow write never lands last with stale data. */
+/**
+ * Same one-at-a-time rule as the song library, so a slow write never lands last
+ * with stale data. A failed write stays on the queue's rejection, and is also
+ * reported for the controller, so the next save can still run.
+ */
 function persistThemes(): Promise<void> {
-  const write = themeWriteTail.then(() => commitPersistedThemes(structuredClone(CUSTOM_THEMES)));
+  const write = themeWriteTail.then(async () => {
+    try {
+      await commitPersistedThemes(structuredClone(CUSTOM_THEMES));
+      reportThemeSaveError(null);
+    } catch (error) {
+      reportThemeSaveError(themeSaveMessage(error));
+      throw error;
+    }
+  });
   themeWriteTail = write.then(
     () => undefined,
     () => undefined,
@@ -64,7 +104,13 @@ export async function loadCustomThemes(): Promise<CustomThemeRecord[]> {
     // Themes created while the file was still loading are kept alongside the saved ones.
     const pending = CUSTOM_THEMES.filter((theme) => !stored.some((saved) => saved.id === theme.id));
     CUSTOM_THEMES.splice(0, CUSTOM_THEMES.length, ...stored, ...pending);
-    if (pending.length) await persistThemes();
+    if (pending.length) {
+      try {
+        await persistThemes();
+      } catch {
+        // Pending themes stay in memory. persistThemes already reported the failed write.
+      }
+    }
   }
   sync();
   return [...CUSTOM_THEMES];

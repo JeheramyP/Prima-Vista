@@ -302,7 +302,12 @@ app.whenReady().then(() => {
 
   ipcMain.handle("themes:save", async (_event, themes: unknown[]) => {
     if (!Array.isArray(themes)) return false;
-    await writeThemesFile(themes);
+    try {
+      await writeThemesFile(themes);
+    } catch (error) {
+      console.error("Failed to save themes:", error);
+      throw error;
+    }
     return true;
   });
 

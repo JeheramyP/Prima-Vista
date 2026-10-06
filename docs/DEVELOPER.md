@@ -47,7 +47,7 @@ The renderer has no Node access. Both windows use the same preload with `context
 | `songs:load` | `invoke` | Controller → main | Parsed `song-library.json`, or `null` if the file is missing or unreadable. |
 | `songs:save` | `invoke` | Controller → main | Atomically replaces the song file. Throws if the write fails. |
 | `themes:load` | `invoke` | Controller → main | Parsed array, or `null`. Shape is checked in the renderer. |
-| `themes:save` | `invoke` | Controller → main | Atomically replaces the theme file. |
+| `themes:save` | `invoke` | Controller → main | Atomically replaces the theme file. Throws if the write fails. |
 | `window:focus-fix` | `send` | Renderer → main | Blur then focus the sender window. No-op on macOS. |
 
 Escape on the output is handled in the main process (`before-input-event`), not in the page, so it still works when the page is blacked out.
@@ -96,7 +96,7 @@ While that id is active, a layout effect copies the draft onto the library objec
 
 `flushPendingNewSong` runs when the operator selects a different song, so the debounced write is not abandoned.
 
-`provisionalNewSong` plus `PROVISIONAL_REUSE_MS` (1 second) reuse an untouched "Untitled" if New song fires twice before anyone edits. `SongList` also disables its button for 1 second. The two guards solve different double-clicks: one in state, one on the control.
+`provisionalNewSong` plus `PROVISIONAL_REUSE_MS` (1 second) reuse an untouched "Untitled" when New song fires again before the draft changes. `setDraft` sets `provisionalEditedRef` while that blank is still selected.
 
 If the library file loads after the operator already started a new song, the load effect merges that pending song back into the stored list and saves it. If the operator has not touched the selection, the load replaces the on-screen song with the first stored song. `selectionTouchedRef` records the difference.
 
@@ -114,7 +114,7 @@ Songs missing from the library are filtered out of the setlist once `libraryRead
 
 `deleteSong` adds the id to `removedSongIds` before the write. A `saveSong` that was already in flight cannot append the deleted song back onto the array after the splice.
 
-Theme writes use the same queue pattern in `customThemes.ts` but do not surface a banner. `addCustomTheme` updates `CUSTOM_THEMES` synchronously and applies a brand-new theme to the current song. An update of an existing id does not change the song's theme selection.
+Theme writes use the same queue (`themeWriteTail`) and the same banner. `persistThemes` reports through `subscribeThemeSaveError`. `addCustomTheme` registers the theme in memory, updates the picker, applies a brand-new theme to the current song, then awaits the write. An update of an existing id does not change the song's theme selection. A failed write stays on screen and is announced in the banner. It is missing after the next launch until a later save succeeds.
 
 ## Domain model
 
@@ -166,11 +166,11 @@ Section kinds: `verse`, `chorus`, `bridge`, `prechorus`, `tag`, `instrumental`, 
 `SONG_LIBRARY` in `src/lib/songs.ts` is the live store. It starts empty. `loadLibrary`:
 
 1. Asks the preload for `song-library.json`.
-2. If the file exists and every record has `id`, `title`, `artist`, and `sections`, replaces the in-memory array.
+2. If the file exists, replaces the in-memory array with each record that has `id`, `title`, `artist`, and a `sections` array. A section needs an id and a known kind. Missing `lines` become an empty list. A section that is not an object, or that has no id or kind, is dropped. Records missing `id`, `title`, `artist`, or `sections` are dropped.
 3. If the file is missing (`null`), writes an empty library so the next launch is stable.
-4. A corrupt file also returns `null` from the main process when it is not an array. Individual records that fail the main-process check are dropped. The renderer then rejects the whole array unless `every` record passes `isSong`.
+4. A corrupt file also returns `null` from the main process when it is not an array. Individual records that fail the main-process check are dropped. The renderer repairs the remaining records and drops any it cannot repair, instead of rejecting the whole array.
 
-Search is local. `normalize` lowercases and turns non-alphanumeric runs into spaces. The haystack is title, artist, and every lyric line.
+Search is local. `normalize` lowercases and turns non-alphanumeric runs into spaces. The haystack is title, artist, and every lyric line. A section with no `lines` array adds nothing to the haystack.
 
 There is no partial update on disk. Every `saveSong` and `deleteSong` rewrites the full JSON array through `writeJsonAtomic`.
 

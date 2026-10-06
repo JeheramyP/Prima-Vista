@@ -8,6 +8,7 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import DualPreview from "../components/DualPreview";
+import { subscribeThemeSaveError } from "../lib/customThemes";
 import { subscribeLibrarySaveError } from "../lib/songs";
 import ThemePicker from "../components/ThemePicker";
 import LyricEditor from "../components/LyricEditor";
@@ -32,8 +33,11 @@ export default function ControllerView() {
   } = usePresentation();
   const [tab, setTab] = useState<"overview" | "editor">("overview");
   const [librarySaveError, setLibrarySaveError] = useState<string | null>(null);
+  const [themeSaveError, setThemeSaveError] = useState<string | null>(null);
+  const saveError = [librarySaveError, themeSaveError].filter(Boolean).join("\n\n");
 
   useEffect(() => subscribeLibrarySaveError(setLibrarySaveError), []);
+  useEffect(() => subscribeThemeSaveError(setThemeSaveError), []);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -109,12 +113,12 @@ export default function ControllerView() {
   return (
     <div className="flex h-full flex-col bg-sanctuary-950 text-stone-100">
       <Toolbar />
-      {librarySaveError ? (
+      {saveError ? (
         <div
           role="alert"
           className="whitespace-pre-line border-b border-rose-400/30 bg-rose-500/15 px-5 py-2 text-sm text-rose-50"
         >
-          {librarySaveError}
+          {saveError}
         </div>
       ) : null}
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[240px_280px_minmax(0,1fr)]">
