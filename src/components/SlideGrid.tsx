@@ -5,7 +5,7 @@
  * live index. Tiles show the section label and the lyric lines, not a second
  * copy of the stage layout.
  */
-import { kindTone } from "../lib/slides";
+import { kindTone, titleSlideFooter } from "../lib/slides";
 import { usePresentation } from "../state/PresentationContext";
 
 export default function SlideGrid() {
@@ -24,6 +24,7 @@ export default function SlideGrid() {
       <div className="grid min-h-0 flex-1 auto-rows-max grid-cols-2 gap-3 overflow-auto pr-1 xl:grid-cols-3">
         {slides.map((slide, index) => {
           const active = index === currentIndex;
+          const footer = slide.titleSlide ? titleSlideFooter(slide.ccli, slide.copyright) : [];
           return (
             <button
               key={slide.id}
@@ -54,6 +55,11 @@ export default function SlideGrid() {
                   </p>
                   {slide.author ? (
                     <p className="mt-2 text-right text-[11px] leading-snug text-stone-400">{slide.author}</p>
+                  ) : null}
+                  {footer.length ? (
+                    <p className="mt-1 whitespace-pre-line text-[10px] leading-snug text-stone-500">
+                      {footer.join("\n")}
+                    </p>
                   ) : null}
                 </div>
               ) : (

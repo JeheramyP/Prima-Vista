@@ -62,6 +62,8 @@ function isSong(value: unknown): value is Song {
     typeof song.title === "string" &&
     typeof song.artist === "string" &&
     (song.key === undefined || typeof song.key === "string") &&
+    (song.ccli === undefined || typeof song.ccli === "string") &&
+    (song.copyright === undefined || typeof song.copyright === "string") &&
     (song.theme === undefined || typeof song.theme === "string") &&
     Array.isArray(song.sections) &&
     song.sections.every(isLyricSection)
@@ -113,6 +115,8 @@ function sanitizeSong(value: unknown): Song | null {
     sections,
   };
   if (typeof song.key === "string") repaired.key = song.key;
+  if (typeof song.ccli === "string") repaired.ccli = song.ccli;
+  if (typeof song.copyright === "string") repaired.copyright = song.copyright;
   if (typeof song.theme === "string") repaired.theme = song.theme;
   return isSong(repaired) ? repaired : null;
 }

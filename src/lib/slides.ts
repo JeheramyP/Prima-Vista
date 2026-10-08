@@ -39,6 +39,8 @@ export const EMPTY_DRAFT: SongDraft = {
   title: "Untitled",
   artist: "",
   key: "",
+  ccli: "",
+  copyright: "",
   sections: [],
 };
 
@@ -67,10 +69,14 @@ export function sectionsToSlides(sections: LyricSection[]): Slide[] {
   return slides;
 }
 
-/** Opening slide for a song. Generated from the title and artist, never stored as a section. */
-export function titleSlideForSong(song: Pick<Song, "id" | "title" | "artist">): Slide {
+/** Opening slide for a song. Generated from the title, artist, CCLI number, and copyright. */
+export function titleSlideForSong(
+  song: Pick<Song, "id" | "title" | "artist" | "ccli" | "copyright">,
+): Slide {
   const title = song.title.trim() || "Untitled";
   const author = song.artist.trim();
+  const ccli = song.ccli?.trim() ?? "";
+  const copyright = song.copyright?.trim() ?? "";
   return {
     id: `${song.id}:title`,
     sectionId: `${song.id}:title`,
@@ -79,7 +85,19 @@ export function titleSlideForSong(song: Pick<Song, "id" | "title" | "artist">): 
     lines: [title],
     titleSlide: true,
     author: author || undefined,
+    ccli: ccli || undefined,
+    copyright: copyright || undefined,
   };
+}
+
+/** Muted title-slide lines: the copyright notice, then the CCLI song number. */
+export function titleSlideFooter(ccli?: string, copyright?: string): string[] {
+  const notice = copyright?.trim() ?? "";
+  const number = ccli?.trim() ?? "";
+  const lines: string[] = [];
+  if (notice) lines.push(notice);
+  if (number) lines.push(/^ccli\b/i.test(number) ? number : `CCLI #${number}`);
+  return lines;
 }
 
 /** Title card first, then the section slides. The title card is not stored on the song. */
@@ -208,6 +226,8 @@ export function songToDraft(song: Song): SongDraft {
     title: song.title,
     artist: song.artist,
     key: song.key ?? "",
+    ccli: song.ccli ?? "",
+    copyright: song.copyright ?? "",
     sections: withSectionLabels(song.sections).map((section) => ({
       ...section,
       lines: [...sectionLines(section)],
@@ -217,11 +237,15 @@ export function songToDraft(song: Song): SongDraft {
 
 export function draftToSong(id: string, draft: SongDraft): Song {
   const key = draft.key.trim();
+  const ccli = draft.ccli.trim();
+  const copyright = draft.copyright.trim();
   return {
     id,
     title: draft.title.trim() || "Untitled",
     artist: draft.artist.trim(),
     key: key || undefined,
+    ccli: ccli || undefined,
+    copyright: copyright || undefined,
     sections: cleanSectionLines(withSectionLabels(draft.sections)),
   };
 }

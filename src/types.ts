@@ -33,6 +33,10 @@ export type Song = {
   title: string;
   artist: string;
   key?: string;
+  /** CCLI song number, stored without the "CCLI" prefix. */
+  ccli?: string;
+  /** Copyright notice, which may include © or ℗. */
+  copyright?: string;
   /** Output look for this song. Missing values use the Sanctuary theme. */
   theme?: StageThemeId;
   sections: LyricSection[];
@@ -42,6 +46,8 @@ export type SongDraft = {
   title: string;
   artist: string;
   key: string;
+  ccli: string;
+  copyright: string;
   sections: LyricSection[];
 };
 
@@ -55,6 +61,10 @@ export type Slide = {
   titleSlide?: boolean;
   /** Credit shown on a title slide. */
   author?: string;
+  /** CCLI song number shown on a title slide. */
+  ccli?: string;
+  /** Copyright notice shown on a title slide. */
+  copyright?: string;
 };
 
 export type SetlistEntry = {
@@ -74,8 +84,12 @@ export type SlidePayload = {
   theme: StageThemeId;
   /** Definition of `theme` when it is user-made, since the output window has no theme library. */
   customTheme?: CustomThemeRecord;
-  /** Stage layout: large title, author in the lower right. */
+  /** Stage layout: large title, author in the lower right, copyright and CCLI along the bottom. */
   titleSlide?: boolean;
+  /** CCLI song number. Shown on a title slide when set. */
+  ccli?: string;
+  /** Copyright notice. Shown on a title slide when set. */
+  copyright?: string;
 };
 
 export type PrimaVistaAPI = {

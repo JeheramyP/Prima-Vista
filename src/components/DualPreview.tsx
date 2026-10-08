@@ -60,6 +60,8 @@ function PreviewCard({
   blackout,
   titleSlide,
   author,
+  ccli,
+  copyright,
 }: {
   label: string;
   lines: string[];
@@ -69,6 +71,8 @@ function PreviewCard({
   blackout?: boolean;
   titleSlide?: boolean;
   author?: string;
+  ccli?: string;
+  copyright?: string;
 }) {
   const surface = blackout
     ? { background: "#000000", color: "#ffffff", borderColor: "rgba(255,255,255,0.1)" }
@@ -89,7 +93,13 @@ function PreviewCard({
         style={surface}
       >
         {blackout ? null : titleSlide && lines.length ? (
-          <StageTitle title={lines[0] ?? ""} author={author} theme={theme} />
+          <StageTitle
+            title={lines[0] ?? ""}
+            author={author}
+            ccli={ccli}
+            copyright={copyright}
+            theme={theme}
+          />
         ) : lines.length ? (
           <div className={LYRIC_STAGE_INSET}>
             <FittedLyrics lines={lines} theme={theme} />
@@ -210,6 +220,8 @@ export default function DualPreview() {
             blackout={blackout}
             titleSlide={currentTitle}
             author={current?.author}
+            ccli={current?.ccli}
+            copyright={current?.copyright}
           />
           <PreviewCard
             label={upcoming?.songTitle ? "Next song" : "Next slide"}
@@ -219,6 +231,8 @@ export default function DualPreview() {
             muted
             titleSlide={nextTitle}
             author={upcoming?.slide.author}
+            ccli={upcoming?.slide.ccli}
+            copyright={upcoming?.slide.copyright}
           />
         </div>
         <div

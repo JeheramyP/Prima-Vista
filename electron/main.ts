@@ -47,6 +47,8 @@ type SlidePayload = {
   theme?: string;
   customTheme?: unknown;
   titleSlide?: boolean;
+  ccli?: string;
+  copyright?: string;
 };
 
 type SongRecord = {

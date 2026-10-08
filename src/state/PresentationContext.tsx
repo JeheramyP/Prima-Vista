@@ -57,7 +57,14 @@ function settleSave(work: Promise<unknown>) {
 }
 
 function isUntouchedBlank(song: Song) {
-  return song.title === "Untitled" && !song.artist && !song.key && song.sections.length === 0;
+  return (
+    song.title === "Untitled" &&
+    !song.artist &&
+    !song.key &&
+    !song.ccli &&
+    !song.copyright &&
+    song.sections.length === 0
+  );
 }
 
 function writeDraftOntoSong(song: Song, draft: SongDraft) {
@@ -66,11 +73,15 @@ function writeDraftOntoSong(song: Song, draft: SongDraft) {
     song.title !== next.title ||
     song.artist !== next.artist ||
     song.key !== next.key ||
+    song.ccli !== next.ccli ||
+    song.copyright !== next.copyright ||
     JSON.stringify(song.sections) !== JSON.stringify(next.sections);
   if (!changed) return false;
   song.title = next.title;
   song.artist = next.artist;
   song.key = next.key;
+  song.ccli = next.ccli;
+  song.copyright = next.copyright;
   song.sections = next.sections;
   return true;
 }
@@ -342,8 +353,26 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
         const first = currentSlides[0];
         if (!first?.titleSlide) return currentSlides;
         const author = song.artist.trim();
-        if (first.lines[0] === song.title && (first.author ?? "") === author) return currentSlides;
-        return [{ ...first, lines: [song.title], author: author || undefined }, ...currentSlides.slice(1)];
+        const ccli = song.ccli?.trim() ?? "";
+        const copyright = song.copyright?.trim() ?? "";
+        if (
+          first.lines[0] === song.title &&
+          (first.author ?? "") === author &&
+          (first.ccli ?? "") === ccli &&
+          (first.copyright ?? "") === copyright
+        ) {
+          return currentSlides;
+        }
+        return [
+          {
+            ...first,
+            lines: [song.title],
+            author: author || undefined,
+            ccli: ccli || undefined,
+            copyright: copyright || undefined,
+          },
+          ...currentSlides.slice(1),
+        ];
       });
       setResults((current) => current.map((row) => (row.id === id ? song : row)));
     }
@@ -365,6 +394,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     () => ({
       songTitle: activeSong?.title ?? "",
       artist: activeSong?.artist ?? "",
+      ccli: activeSong?.ccli ?? "",
+      copyright: activeSong?.copyright ?? "",
       sectionLabel: currentSlide?.sectionLabel ?? "",
       lines: currentSlide?.lines ?? [],
       index: currentIndex,

@@ -1,7 +1,7 @@
 /**
  * Section editor.
  *
- * Edits the draft's title, artist, key, and ordered section cards. Palette
+ * Edits the draft's title, artist, key, CCLI number, copyright, and ordered section cards. Palette
  * drags insert a kind. Card drags reorder. Update slides calls `applyEditor`,
  * which is what publishes an existing song. The Copy-paste tab is
  * `PasteLyricsMode`. The selected tab is kept in `lastMode` across unmounts
@@ -35,6 +35,72 @@ function hasDragType(event: DragEvent, type: string) {
 
 const fieldClass =
   "w-full rounded-xl border border-white/10 bg-sanctuary-950 px-3 py-2 text-sm text-stone-100 outline-none placeholder:text-stone-600 focus:border-gold-500/40 focus:ring-2 focus:ring-gold-400/15";
+
+const COPYRIGHT_SYMBOLS = [
+  { symbol: "©", name: "Copyright" },
+  { symbol: "℗", name: "Sound recording" },
+] as const;
+
+function CopyrightField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const insertSymbol = (symbol: string) => {
+    const input = inputRef.current;
+    const start = input?.selectionStart ?? value.length;
+    const end = input?.selectionEnd ?? value.length;
+    onChange(`${value.slice(0, start)}${symbol}${value.slice(end)}`);
+    const cursor = start + symbol.length;
+    window.requestAnimationFrame(() => {
+      input?.focus();
+      input?.setSelectionRange(cursor, cursor);
+    });
+  };
+
+  return (
+    <div className="min-w-0">
+      <label
+        htmlFor="song-copyright"
+        className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500"
+      >
+        Copyright
+      </label>
+      <div className="flex gap-1.5">
+        <input
+          id="song-copyright"
+          ref={inputRef}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="© 2024 Publisher"
+          spellCheck={false}
+          className={fieldClass}
+        />
+        <div className="flex shrink-0 items-stretch overflow-hidden rounded-xl border border-white/10 bg-sanctuary-950">
+          {COPYRIGHT_SYMBOLS.map((item, index) => (
+            <button
+              key={item.symbol}
+              type="button"
+              title={`Insert ${item.name.toLowerCase()} symbol`}
+              aria-label={`Insert ${item.name.toLowerCase()} symbol`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => insertSymbol(item.symbol)}
+              className={`px-2.5 text-sm text-stone-300 transition hover:bg-white/10 hover:text-stone-100 ${
+                index > 0 ? "border-l border-white/10" : ""
+              }`}
+            >
+              {item.symbol}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function SlideUpdateSpinner() {
   return (
@@ -185,41 +251,64 @@ export default function LyricEditor() {
         </button>
       </div>
 
-      <div className="mb-3 grid gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_5.5rem]">
-        <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-            Title
-          </span>
-          <input
-            value={draft.title}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, title: event.target.value }))
-            }
-            className={fieldClass}
+      <div className="mb-3 grid gap-2">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_5.5rem]">
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+              Title
+            </span>
+            <input
+              value={draft.title}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, title: event.target.value }))
+              }
+              className={fieldClass}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+              Artist
+            </span>
+            <input
+              value={draft.artist}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, artist: event.target.value }))
+              }
+              className={fieldClass}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+              Key
+            </span>
+            <input
+              value={draft.key}
+              onChange={(event) => setDraft((current) => ({ ...current, key: event.target.value }))}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+              CCLI
+            </span>
+            <input
+              value={draft.ccli}
+              onChange={(event) =>
+                setDraft((current) => ({ ...current, ccli: event.target.value }))
+              }
+              inputMode="numeric"
+              placeholder="Number"
+              spellCheck={false}
+              className={fieldClass}
+            />
+          </label>
+          <CopyrightField
+            value={draft.copyright}
+            onChange={(copyright) => setDraft((current) => ({ ...current, copyright }))}
           />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-            Artist
-          </span>
-          <input
-            value={draft.artist}
-            onChange={(event) =>
-              setDraft((current) => ({ ...current, artist: event.target.value }))
-            }
-            className={fieldClass}
-          />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-            Key
-          </span>
-          <input
-            value={draft.key}
-            onChange={(event) => setDraft((current) => ({ ...current, key: event.target.value }))}
-            className={fieldClass}
-          />
-        </label>
+        </div>
       </div>
 
       {mode === "paste" ? (

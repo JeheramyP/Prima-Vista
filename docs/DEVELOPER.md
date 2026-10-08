@@ -24,7 +24,7 @@ Path alias `@/` points at `src/`. Electron main and preload are outside that ali
 
 Cursor and VS Code set `ELECTRON_RUN_AS_NODE` in their terminals. If Electron inherits it, `electron.app` is undefined and the process exits immediately. `vite.config.ts` and `scripts/start-electron.mjs` delete that variable before Electron starts. The start script also passes `--no-sandbox`.
 
-The renderer content-security policy in `index.html` allows Google font stylesheets and the Vite websocket (`ws:`, `localhost`, `127.0.0.1`). Packaged builds still load those fonts from the network.
+The renderer content-security policy in `index.html` allows the Vite websocket (`ws:`, `localhost`, `127.0.0.1`). Stage typefaces are bundled, not loaded from Google Fonts: Fraunces, Cormorant Garamond, Oswald, and Outfit live in `src/assets/fonts` and are declared in `src/fonts.css`. A projector with no network still measures those glyphs. SIL Open Font License notices ship from `public/font-licenses/`.
 
 ## Process boundary
 
@@ -197,7 +197,7 @@ Luminance uses the sRGB coefficients. Average luminance above 0.4 selects dark t
 1. `stageFontCapPx` caps the search at a fraction of the box height (`maxHeightRatio`, 0.13 for lyrics, 0.22 for titles) and at the height of the line stack.
 2. `largestSizeThatFits` binary-searches the largest integer pixel size that does not overflow. The predicate must stay true once it becomes true.
 3. A short loop steps down if web fonts change glyph widths after the search.
-4. `ResizeObserver`, `document.fonts` `loadingdone`, and an explicit `fonts.load` of the theme family all remeasure.
+4. `ResizeObserver`, `document.fonts` `loadingdone`, and an explicit `fonts.load` of the theme family all remeasure. The families are local files, so that pass is not waiting on a network font.
 
 Lyric lines use `whitespace-nowrap` and shrink. Title lines wrap, with `maxWidth` `14ch`. `theme.sizeScale` multiplies the chosen size so condensed faces (High Contrast) and display faces (Cathedral) stay balanced. The output and `DualPreview` share `LYRIC_STAGE_INSET` and `StageTitle`, so the preview is the same layout as the projector, not a separate design.
 

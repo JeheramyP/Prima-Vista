@@ -8,6 +8,7 @@
  */
 import { useLayoutEffect, useRef, useState } from "react";
 import { largestSizeThatFits, MIN_FONT_PX, stageFontCapPx } from "../lib/fitStageText";
+import { titleSlideFooter } from "../lib/slides";
 import { stageLyricStyle, stageMutedColor, type StageTheme } from "../lib/stageThemes";
 
 /** Lyric block inset, as a fraction of the stage — shared by the output and the preview. */
@@ -122,7 +123,9 @@ export default function FittedLyrics({
       : align === "left"
         ? "absolute left-0 top-1/2 -translate-y-1/2 text-left"
         : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center";
-  const widthClass = wrap && align !== "center" ? "w-full" : "w-max";
+  // `w-max` keeps scrollWidth equal to the glyphs. A full-width box is always
+  // one pixel over the fitter's limit, so wrapped credits would stay at 1px.
+  const widthClass = "w-max max-w-full";
 
   return (
     <div ref={boxRef} className="relative h-full w-full min-h-0 min-w-0">
@@ -149,13 +152,19 @@ export default function FittedLyrics({
 export function StageTitle({
   title,
   author,
+  ccli,
+  copyright,
   theme,
 }: {
   title: string;
   author?: string;
+  ccli?: string;
+  copyright?: string;
   theme: StageTheme;
 }) {
   const credit = author?.trim() ?? "";
+  const legal = titleSlideFooter(ccli, copyright);
+  const footerHeight = legal.length > 1 ? "h-[14%]" : "h-[9%]";
 
   return (
     <div className={`${TITLE_STAGE_INSET} flex flex-col`}>
@@ -164,7 +173,33 @@ export function StageTitle({
           <FittedLyrics lines={[title]} theme={theme} wrap maxWidth="14ch" maxHeightRatio={0.22} />
         </div>
       </div>
-      {credit ? (
+      {legal.length ? (
+        <div className={`mt-[1%] flex ${footerHeight} shrink-0 items-end gap-[4%]`}>
+          <div className="h-full min-w-0 flex-1">
+            <FittedLyrics
+              lines={legal}
+              theme={theme}
+              wrap
+              align={credit ? "left" : "center"}
+              color={stageMutedColor(theme)}
+              fontWeight={400}
+              maxHeightRatio={0.72}
+            />
+          </div>
+          {credit ? (
+            <div className={`w-[38%] shrink-0 ${legal.length > 1 ? "h-[64%]" : "h-full"}`}>
+              <FittedLyrics
+                lines={[credit]}
+                theme={theme}
+                align="right"
+                color={stageMutedColor(theme)}
+                fontWeight={400}
+                maxHeightRatio={0.82}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : credit ? (
         <div className="mt-[1%] h-[9%] w-[58%] shrink-0 self-end">
           <FittedLyrics
             lines={[credit]}

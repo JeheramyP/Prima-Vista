@@ -107,7 +107,13 @@ export default function PresentationView() {
         />
       )}
       {slide.blackout ? null : showTitle ? (
-        <StageTitle title={slide.songTitle} author={slide.artist} theme={theme} />
+        <StageTitle
+          title={slide.songTitle}
+          author={slide.artist}
+          ccli={slide.ccli}
+          copyright={slide.copyright}
+          theme={theme}
+        />
       ) : (
         <div
           className={`${LYRIC_STAGE_INSET} transition-opacity duration-200 ${
