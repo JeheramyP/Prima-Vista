@@ -2,8 +2,9 @@
  * Stage themes.
  *
  * Built-in looks are full `StageTheme` paint records. User themes and edits
- * of built-ins are stored as `CustomThemeRecord` (fill, colors, angle) and
- * expanded here. `registerCustomThemes` fills the map `stageThemeById`
+ * of built-ins are stored as `CustomThemeRecord` (fill, colors, angle, and
+ * an image when the fill is a photo) and expanded here. `registerCustomThemes`
+ * fills the map `stageThemeById`
  * checks before the built-in list. Songs with a missing or deleted theme id
  * fall back to Sanctuary.
  */
@@ -201,17 +202,19 @@ export const STAGE_THEMES: StageTheme[] = [
 
 export type StageThemeId = (typeof STAGE_THEMES)[number]["id"];
 
-export type CustomFill = "solid" | "linear" | "radial" | "glow";
+export type CustomFill = "solid" | "linear" | "radial" | "glow" | "image";
 
 /** A user-made background. Saved to disk and turned into a full StageTheme on load. */
 export type CustomThemeRecord = {
   id: string;
   name: string;
   fill: CustomFill;
-  /** Hex colors. Solid uses the first; glow uses base then glow color. */
+  /** Hex colors. Solid uses the first; glow uses base then glow color. Image stores one sampled tone for type color. */
   colors: string[];
   /** Linear gradient direction in degrees. */
   angle: number;
+  /** Resized data URL. Present only when `fill` is `image`. */
+  image?: string;
 };
 
 export const CUSTOM_FILLS: { id: CustomFill; label: string; stops: [min: number, max: number] }[] = [
@@ -219,13 +222,26 @@ export const CUSTOM_FILLS: { id: CustomFill; label: string; stops: [min: number,
   { id: "linear", label: "Linear", stops: [2, 3] },
   { id: "radial", label: "Radial", stops: [2, 3] },
   { id: "glow", label: "Glow", stops: [2, 2] },
+  { id: "image", label: "Image", stops: [1, 1] },
 ];
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
+/** Matches the resized JPEG the editor stores. Larger files are dropped on load. */
+const MAX_THEME_IMAGE_LENGTH = 1_500_000;
+
+function isThemeImageData(value: unknown): value is string {
+  return (
+    typeof value === "string" &&
+    value.startsWith("data:image/") &&
+    value.includes(";base64,") &&
+    value.length <= MAX_THEME_IMAGE_LENGTH
+  );
+}
 
 export function isCustomThemeRecord(value: unknown): value is CustomThemeRecord {
   if (!value || typeof value !== "object") return false;
   const record = value as CustomThemeRecord;
+  const imageOk = record.fill === "image" ? isThemeImageData(record.image) : record.image == null;
   return (
     typeof record.id === "string" &&
     typeof record.name === "string" &&
@@ -233,7 +249,8 @@ export function isCustomThemeRecord(value: unknown): value is CustomThemeRecord 
     Array.isArray(record.colors) &&
     record.colors.length > 0 &&
     record.colors.every((color) => typeof color === "string" && HEX_COLOR.test(color)) &&
-    typeof record.angle === "number"
+    typeof record.angle === "number" &&
+    imageOk
   );
 }
 
@@ -256,7 +273,9 @@ function rgba(hex: string, alpha: number) {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-export function customBackground(record: Pick<CustomThemeRecord, "fill" | "colors" | "angle">) {
+type CustomPaint = Pick<CustomThemeRecord, "fill" | "colors" | "angle" | "image">;
+
+export function customBackground(record: CustomPaint) {
   const [first, second = first] = record.colors;
   const stops = record.colors.join(", ");
   switch (record.fill) {
@@ -268,11 +287,16 @@ export function customBackground(record: Pick<CustomThemeRecord, "fill" | "color
       return `radial-gradient(ellipse 120% 110% at 50% 45%, ${stops})`;
     case "glow":
       return `radial-gradient(ellipse 80% 75% at 50% 115%, ${rgba(second, 0.45)}, transparent 70%), radial-gradient(ellipse 65% 55% at 50% -10%, ${rgba(second, 0.14)}, transparent 65%), ${first}`;
+    case "image":
+      return record.image ? `url("${record.image}") center / cover no-repeat` : first;
   }
 }
 
 /** Small-swatch version of a custom background. */
-export function customChip(record: Pick<CustomThemeRecord, "fill" | "colors" | "angle">) {
+export function customChip(record: CustomPaint) {
+  if (record.fill === "image" && record.image) {
+    return `url("${record.image}") center / cover no-repeat`;
+  }
   const [first, second = first] = record.colors;
   if (record.fill === "glow") return `radial-gradient(circle at 50% 100%, ${second}, ${first} 75%)`;
   return customBackground(record);
@@ -280,14 +304,15 @@ export function customChip(record: Pick<CustomThemeRecord, "fill" | "colors" | "
 
 /** Expands a saved fill into a paintable theme. Light backgrounds get dark text. */
 export function buildCustomTheme(record: CustomThemeRecord): StageTheme {
-  // Glow backgrounds are mostly the base color, so only that decides the text color.
-  const sampled = record.fill === "glow" ? record.colors.slice(0, 1) : record.colors;
+  // Glow and photo backgrounds are mostly one tone, so only that decides the text color.
+  const sampled = record.fill === "glow" || record.fill === "image" ? record.colors.slice(0, 1) : record.colors;
   const average = sampled.reduce((sum, color) => sum + luminance(color), 0) / sampled.length;
-  const light = average > 0.4;
+  // Photos stay on light type unless the picture is clearly bright.
+  const light = record.fill === "image" ? average > 0.62 : average > 0.4;
   return {
     id: record.id,
     name: record.name,
-    blurb: "Custom background",
+    blurb: record.fill === "image" ? "Image background" : "Custom background",
     chip: customChip(record),
     background: customBackground(record),
     color: light ? "#14100c" : "#ffffff",

@@ -35,6 +35,7 @@ export default function ThemePicker() {
     null,
   );
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const anchorRef = useRef<HTMLDivElement>(null);
   const closeEditor = useCallback(() => setEditor(null), []);
 
   const saveTheme = (record: CustomThemeRecord) => {
@@ -101,7 +102,7 @@ export default function ThemePicker() {
   const canReset = defaultOverrides.length > 0;
 
   return (
-    <div className="relative">
+    <div ref={anchorRef} className="relative">
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Song theme
@@ -124,7 +125,11 @@ export default function ThemePicker() {
           Reset built-in themes
         </button>
       </div>
-      <div role="radiogroup" aria-label="Theme for the selected song" className="flex flex-wrap items-center gap-1.5">
+      <div
+        role="radiogroup"
+        aria-label="Theme for the selected song"
+        className="flex max-h-[min(16rem,40vh)] flex-wrap items-center gap-1.5 overflow-y-auto overscroll-contain px-1 pb-1 pt-2"
+      >
         {STAGE_THEMES.map((item) => {
           const resolved = stageThemeById(item.id);
           const editing = editor?.kind === "edit" && editor.record.id === item.id;
@@ -223,6 +228,7 @@ export default function ThemePicker() {
           key={editor.kind === "edit" ? editor.record.id : "new"}
           suggestedName={editor.kind === "edit" ? editor.record.name : `Custom ${customThemes.length + 1}`}
           initial={editor.kind === "edit" ? editor.record : undefined}
+          anchorRef={anchorRef}
           ignoreRef={toggleRef}
           onSave={saveTheme}
           onClose={closeEditor}

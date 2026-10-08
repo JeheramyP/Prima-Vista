@@ -1,12 +1,15 @@
 /**
  * Custom theme panel.
  *
- * Edits a fill, one to three hex colors, and a linear angle, with named
- * presets as starting points. The preview is a real `StageTheme` from
- * `themeFromRecord`, so type and contrast match the output. Saving reports
- * a `CustomThemeRecord`. It does not write the file itself.
+ * Edits a fill, one to three hex colors, a linear angle, or an uploaded
+ * background image, with named presets as starting points. The preview is a
+ * real `StageTheme` from `themeFromRecord`, so type and contrast match the
+ * output. Saving reports a `CustomThemeRecord`. It does not write the file itself.
+ * The panel is portaled and sized to the space left in the window, with Cancel
+ * and Save pinned, so a long form cannot run off the screen.
  */
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { createCustomThemeId } from "../lib/customThemes";
 import {
   CUSTOM_FILLS,
@@ -35,6 +38,105 @@ const PRESETS: Preset[] = [
 
 const FALLBACK_PALETTE = ["#1b2440", "#5a3f8c", "#d08a5c"];
 const HEX_INPUT = /^#?[0-9a-f]{6}$/i;
+const MAX_IMAGE_EDGE = 1600;
+const MAX_IMAGE_DATA_URL = 1_200_000;
+const PANEL_MARGIN = 12;
+const PANEL_GAP = 8;
+const PANEL_WIDTH = 380;
+
+type PanelBox = {
+  left: number;
+  width: number;
+  maxHeight: number;
+  top?: number;
+  bottom?: number;
+};
+
+/** Fits the panel in the window, opening upward when the space below is shorter. */
+function placePanel(anchor: HTMLElement): PanelBox {
+  const rect = anchor.getBoundingClientRect();
+  const width = Math.min(PANEL_WIDTH, window.innerWidth - PANEL_MARGIN * 2);
+  const left = Math.min(
+    Math.max(PANEL_MARGIN, rect.left),
+    Math.max(PANEL_MARGIN, window.innerWidth - PANEL_MARGIN - width),
+  );
+  const spaceBelow = window.innerHeight - rect.bottom - PANEL_MARGIN - PANEL_GAP;
+  const spaceAbove = rect.top - PANEL_MARGIN - PANEL_GAP;
+  if (spaceBelow < 280 && spaceAbove > spaceBelow) {
+    return {
+      left,
+      width,
+      maxHeight: Math.max(0, spaceAbove),
+      bottom: window.innerHeight - rect.top + PANEL_GAP,
+    };
+  }
+  return {
+    left,
+    width,
+    maxHeight: Math.max(0, spaceBelow),
+    top: rect.bottom + PANEL_GAP,
+  };
+}
+
+/** Shrinks a photo to a JPEG data URL and samples one tone for lyric contrast. */
+async function themeImageFromFile(file: File): Promise<{ image: string; tone: string }> {
+  if (!file.type.startsWith("image/")) throw new Error("Choose an image file.");
+  if (file.size > 25 * 1024 * 1024) throw new Error("That image is too large.");
+
+  const bitmap = await createImageBitmap(file).catch(() => {
+    throw new Error("Couldn't read that image.");
+  });
+  try {
+    const tone = averageTone(bitmap);
+    let edge = MAX_IMAGE_EDGE;
+    let quality = 0.82;
+    let dataUrl = "";
+    for (let attempt = 0; attempt < 4; attempt++) {
+      dataUrl = paintThemeImage(bitmap, edge, quality);
+      if (dataUrl.length <= MAX_IMAGE_DATA_URL) return { image: dataUrl, tone };
+      edge = Math.round(edge * 0.75);
+      quality = Math.max(0.55, quality - 0.1);
+    }
+    throw new Error("That image is too large to save as a theme.");
+  } finally {
+    bitmap.close();
+  }
+}
+
+function paintThemeImage(bitmap: ImageBitmap, maxEdge: number, quality: number) {
+  const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Couldn't read that image.");
+  ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
+function averageTone(bitmap: ImageBitmap) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 24;
+  canvas.height = 24;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return FALLBACK_PALETTE[0];
+  ctx.drawImage(bitmap, 0, 0, 24, 24);
+  const { data } = ctx.getImageData(0, 0, 24, 24);
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let count = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    if (data[i + 3] < 16) continue;
+    r += data[i];
+    g += data[i + 1];
+    b += data[i + 2];
+    count += 1;
+  }
+  if (!count) return FALLBACK_PALETTE[0];
+  const channel = (value: number) => Math.round(value / count).toString(16).padStart(2, "0");
+  return `#${channel(r)}${channel(g)}${channel(b)}`;
+}
 
 function stopLabel(fill: CustomFill, index: number) {
   if (fill === "solid") return "Color";
@@ -45,6 +147,7 @@ function stopLabel(fill: CustomFill, index: number) {
 export default function CustomThemeEditor({
   suggestedName,
   initial,
+  anchorRef,
   ignoreRef,
   onSave,
   onClose,
@@ -52,6 +155,8 @@ export default function CustomThemeEditor({
   suggestedName: string;
   /** When set, the panel edits this theme instead of creating one. */
   initial?: CustomThemeRecord;
+  /** Element the panel hangs from. The panel is portaled so ancestors cannot clip it. */
+  anchorRef: RefObject<HTMLElement | null>;
   /** The button that toggles this panel, so clicking it is not an outside click. */
   ignoreRef?: RefObject<HTMLElement>;
   onSave: (theme: CustomThemeRecord) => void;
@@ -68,6 +173,10 @@ export default function CustomThemeEditor({
     return Math.max(min, Math.min(max, initial.colors.length));
   });
   const [angle, setAngle] = useState(initial?.angle ?? 180);
+  const [image, setImage] = useState(initial?.fill === "image" ? (initial.image ?? "") : "");
+  const [imageTone, setImageTone] = useState(initial?.colors[0] ?? FALLBACK_PALETTE[0]);
+  const [imageError, setImageError] = useState<string | null>(null);
+  const [readingImage, setReadingImage] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
 
@@ -81,11 +190,43 @@ export default function CustomThemeEditor({
         id: initial?.id ?? "preview",
         name: name || suggestedName,
         fill,
-        colors,
+        colors: fill === "image" ? [imageTone] : colors,
         angle,
+        image: fill === "image" ? image : undefined,
       }),
-    [angle, colors.join(), fill, initial?.id, name, suggestedName],
+    [angle, colors.join(), fill, image, imageTone, initial?.id, name, suggestedName],
   );
+
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    const panel = panelRef.current;
+    if (!anchor || !panel) return;
+
+    const update = () => {
+      const box = placePanel(anchor);
+      panel.style.left = `${box.left}px`;
+      panel.style.width = `${box.width}px`;
+      panel.style.maxHeight = `${Math.max(box.maxHeight, 0)}px`;
+      if (box.top != null) {
+        panel.style.top = `${box.top}px`;
+        panel.style.bottom = "auto";
+      } else {
+        panel.style.top = "auto";
+        panel.style.bottom = `${box.bottom}px`;
+      }
+    };
+
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(anchor);
+    window.addEventListener("resize", update);
+    window.addEventListener("scroll", update, true);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+      window.removeEventListener("scroll", update, true);
+    };
+  }, [anchorRef]);
 
   useEffect(() => {
     nameRef.current?.focus();
@@ -126,23 +267,49 @@ export default function CustomThemeEditor({
     );
   };
 
+  const chooseImage = async (file: File | undefined) => {
+    if (!file) return;
+    setImageError(null);
+    setReadingImage(true);
+    try {
+      const prepared = await themeImageFromFile(file);
+      setFill("image");
+      setImage(prepared.image);
+      setImageTone(prepared.tone);
+      setName((current) => {
+        if (current.trim()) return current;
+        const base = file.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim();
+        return base.slice(0, 32);
+      });
+    } catch (error) {
+      setImageError(error instanceof Error ? error.message : "Couldn't read that image.");
+    } finally {
+      setReadingImage(false);
+    }
+  };
+
   const save = () => {
+    if (fill === "image" && !image) return;
     onSave({
       id: initial?.id ?? createCustomThemeId(),
       name: name.trim() || suggestedName,
       fill,
-      colors,
+      colors: fill === "image" ? [imageTone] : colors,
       angle,
+      ...(fill === "image" ? { image } : {}),
     });
   };
 
-  return (
+  const canSave = (fill !== "image" || Boolean(image)) && !readingImage;
+
+  return createPortal(
     <div
       ref={panelRef}
       role="dialog"
       aria-label={editingBuiltIn ? "Edit built-in theme" : initial ? "Edit custom theme" : "New custom theme"}
-      className="absolute left-0 top-full z-30 mt-2 max-h-[calc(100vh-11rem)] w-[380px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/10 bg-sanctuary-950/95 p-4 shadow-stage backdrop-blur"
+      className="fixed z-50 flex max-h-[calc(100dvh-1.5rem)] max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden rounded-2xl border border-white/10 bg-sanctuary-950/95 shadow-stage backdrop-blur"
     >
+      <div className="min-h-0 overflow-y-auto overscroll-contain p-4">
       <div
         className="relative mb-4 flex aspect-video items-center justify-center overflow-hidden rounded-xl border px-6 text-center"
         style={{
@@ -196,7 +363,7 @@ export default function CustomThemeEditor({
         <span className="mb-1 block text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Style
         </span>
-        <div role="radiogroup" aria-label="Background style" className="grid grid-cols-4 gap-1 rounded-lg bg-white/[0.04] p-1">
+        <div role="radiogroup" aria-label="Background style" className="grid grid-cols-5 gap-1 rounded-lg bg-white/[0.04] p-1">
           {CUSTOM_FILLS.map((option) => (
             <button
               key={option.id}
@@ -204,7 +371,7 @@ export default function CustomThemeEditor({
               role="radio"
               aria-checked={fill === option.id}
               onClick={() => chooseFill(option.id)}
-              className={`rounded-md px-2 py-1 text-xs font-medium transition ${
+              className={`rounded-md px-1 py-1 text-[11px] font-medium transition ${
                 fill === option.id ? "bg-white text-sanctuary-950" : "text-stone-400 hover:text-stone-200"
               }`}
             >
@@ -214,6 +381,7 @@ export default function CustomThemeEditor({
         </div>
       </div>
 
+      {fill !== "image" && (
       <div className="mb-3 space-y-1.5">
         {colors.map((color, index) => (
           <div key={index} className="flex items-center gap-2">
@@ -251,6 +419,7 @@ export default function CustomThemeEditor({
           </button>
         )}
       </div>
+      )}
 
       {fill === "linear" && (
         <label className="mb-4 block">
@@ -270,13 +439,56 @@ export default function CustomThemeEditor({
         </label>
       )}
 
+      <div className="mb-4">
+        <span className="mb-1 block text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+          Background image
+        </span>
+        <div className="flex items-center gap-2">
+          <label className="cursor-pointer rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-xs font-medium text-stone-200 transition hover:border-gold-400/50 hover:text-gold-50">
+            {readingImage ? "Reading…" : fill === "image" && image ? "Replace image" : "Upload image"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              disabled={readingImage}
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.target.value = "";
+                void chooseImage(file);
+              }}
+            />
+          </label>
+          {image && fill === "image" && (
+            <button
+              type="button"
+              onClick={() => {
+                setImage("");
+                setImageError(null);
+              }}
+              className="rounded-lg px-2 py-1.5 text-xs font-medium text-stone-400 transition hover:text-stone-200"
+            >
+              Remove
+            </button>
+          )}
+        </div>
+        {imageError ? (
+          <p className="mt-1.5 text-xs text-red-300">{imageError}</p>
+        ) : (
+          <p className="mt-1.5 text-xs leading-relaxed text-stone-500">
+            JPEG, PNG, WebP, or GIF. The picture fills the stage.
+          </p>
+        )}
+      </div>
+
       {editingBuiltIn && (
         <p className="mb-3 text-xs leading-relaxed text-stone-500">
           Saving replaces this built-in look. Reset built-in themes restores the originals and leaves custom themes alone.
         </p>
       )}
 
-      <div className="flex justify-end gap-2">
+      </div>
+
+      <div className="flex shrink-0 justify-end gap-2 border-t border-white/10 bg-sanctuary-950 px-4 py-3">
         <button
           type="button"
           onClick={onClose}
@@ -287,12 +499,14 @@ export default function CustomThemeEditor({
         <button
           type="button"
           onClick={save}
-          className="rounded-lg border border-gold-500/30 bg-gold-500/15 px-3 py-1.5 text-xs font-medium text-gold-50 transition hover:bg-gold-500/25"
+          disabled={!canSave}
+          className="rounded-lg border border-gold-500/30 bg-gold-500/15 px-3 py-1.5 text-xs font-medium text-gold-50 transition hover:bg-gold-500/25 disabled:cursor-default disabled:opacity-40"
         >
           {initial ? "Save changes" : "Save theme"}
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
