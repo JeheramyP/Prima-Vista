@@ -81,10 +81,10 @@ function PreviewCard({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <h3 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           {label}
         </h3>
-        {section && <span className="text-[11px] text-gold-200">{section}</span>}
+        {section && <span className="text-[12px] text-gold-200">{section}</span>}
       </div>
       <div
         className={`relative aspect-video w-full overflow-hidden rounded-2xl border shadow-stage ${
@@ -190,7 +190,7 @@ export default function DualPreview() {
       <div className="mb-2 flex items-center justify-end gap-3">
         <label
           htmlFor="preview-size"
-          className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500"
+          className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500"
         >
           Preview size
         </label>

@@ -24,7 +24,7 @@ export default function SearchBar() {
         placeholder="Search title, artist, or lyric line"
         className="w-full rounded-xl border border-white/10 bg-sanctuary-800 py-2.5 pl-10 pr-16 text-sm text-stone-100 outline-none ring-gold-400/0 transition placeholder:text-stone-500 focus:border-gold-500/40 focus:ring-2 focus:ring-gold-400/20"
       />
-      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[11px] uppercase tracking-[0.16em] text-gold-400">
+      <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[12px] uppercase tracking-[0.16em] text-gold-400">
         {searching ? "Looking" : null}
       </span>
     </label>

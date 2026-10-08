@@ -10,6 +10,13 @@ body,
   height: 100%;
 }
 
+/* Slightly larger operator type. Rem sizes (song titles, fields, buttons)
+   follow this root. The output document never has this class, so stage
+   lyrics stay sized to the projector. */
+html.controller {
+  font-size: 18px;
+}
+
 body {
   margin: 0;
   background: #0c0b0a;

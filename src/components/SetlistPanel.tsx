@@ -71,17 +71,17 @@ export default function SetlistPanel() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-3 flex items-center justify-between gap-2 px-1">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Setlist
         </h2>
-        <span className="ml-auto text-[11px] text-stone-500">{setlist.length}</span>
+        <span className="ml-auto text-[12px] text-stone-500">{setlist.length}</span>
         {setlist.length > 0 && (
           <button
             type="button"
             onClick={() => {
               if (confirmDialog("Remove every song from the setlist?")) clearSetlist();
             }}
-            className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[11px] font-medium text-stone-300 transition hover:border-white/20 hover:bg-white/[0.07]"
+            className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[12px] font-medium text-stone-300 transition hover:border-white/20 hover:bg-white/[0.07]"
           >
             Clear
           </button>
@@ -148,7 +148,7 @@ export default function SetlistPanel() {
                     <span className="block truncate text-sm font-medium text-stone-100">
                       {item.song.title}
                     </span>
-                    <span className="mt-0.5 flex items-center gap-2 text-[11px] text-stone-500">
+                    <span className="mt-0.5 flex items-center gap-2 text-[12px] text-stone-500">
                       {item.song.key && <span className="text-gold-200">{item.song.key}</span>}
                       {active && <span className="uppercase tracking-wide text-gold-300">Live</span>}
                       {upNext && <span className="uppercase tracking-wide text-stone-400">Up next</span>}

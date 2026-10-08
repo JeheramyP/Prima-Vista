@@ -66,7 +66,7 @@ function CopyrightField({
     <div className="min-w-0">
       <label
         htmlFor="song-copyright"
-        className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500"
+        className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500"
       >
         Copyright
       </label>
@@ -215,7 +215,7 @@ export default function LyricEditor() {
   return (
     <section className="flex flex-col">
       <div className="mb-3 flex items-center gap-3">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Lyric editor
         </h2>
         <div
@@ -230,7 +230,7 @@ export default function LyricEditor() {
               role="radio"
               aria-checked={mode === item.mode}
               onClick={() => changeMode(item.mode)}
-              className={`rounded-full px-3 py-1 text-[11px] font-medium transition ${
+              className={`rounded-full px-3 py-1 text-[12px] font-medium transition ${
                 mode === item.mode
                   ? "bg-white text-sanctuary-950"
                   : "text-stone-400 hover:text-stone-200"
@@ -254,7 +254,7 @@ export default function LyricEditor() {
       <div className="mb-3 grid gap-2">
         <div className="grid gap-2 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_5.5rem]">
           <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
               Title
             </span>
             <input
@@ -266,7 +266,7 @@ export default function LyricEditor() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
               Artist
             </span>
             <input
@@ -278,7 +278,7 @@ export default function LyricEditor() {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
               Key
             </span>
             <input
@@ -290,7 +290,7 @@ export default function LyricEditor() {
         </div>
         <div className="grid gap-2 sm:grid-cols-[7.5rem_minmax(0,1fr)]">
           <label className="block">
-            <span className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
               CCLI
             </span>
             <input
@@ -314,7 +314,7 @@ export default function LyricEditor() {
       {mode === "paste" ? (
         <>
           <PasteLyricsMode />
-          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+          <p className="mt-2 text-[12px] leading-relaxed text-stone-500">
             A title slide is added automatically. Each block takes the next paragraph of the lyrics
             in roadmap order, including a repeated Chorus 1. Every four lyric lines become one slide.
           </p>
@@ -322,7 +322,7 @@ export default function LyricEditor() {
       ) : (
         <>
           <div className="mb-3">
-            <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
               Add section
             </p>
             <div className="flex flex-wrap gap-2">
@@ -438,7 +438,7 @@ export default function LyricEditor() {
             ))}
             {sections.length > 0 && dropIndex === sections.length && dropMarker}
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+          <p className="mt-2 text-[12px] leading-relaxed text-stone-500">
             A title slide is added automatically. Drag a block into the song, or click one to add
             it. Drag a card handle to reorder. Use the number next to a section name to label it
             Chorus 1, Chorus 2, and so on. Every four lyric lines become one slide.
@@ -504,12 +504,12 @@ function SectionCard({
           options={numberOptions}
           onChange={onNumberChange}
         />
-        <span className="text-[11px] text-stone-500">{countLabel}</span>
+        <span className="text-[12px] text-stone-500">{countLabel}</span>
         <div className="ml-auto flex items-center gap-1">
           <button
             type="button"
             onClick={onDuplicate}
-            className="rounded-lg px-2 py-1 text-[11px] font-medium text-stone-400 transition hover:bg-white/10 hover:text-stone-200"
+            className="rounded-lg px-2 py-1 text-[12px] font-medium text-stone-400 transition hover:bg-white/10 hover:text-stone-200"
           >
             Duplicate
           </button>

@@ -191,7 +191,7 @@ export default function PasteLyricsMode() {
   return (
     <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_17rem]">
       <div className="flex flex-col">
-        <label className="mb-1 block text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+        <label className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
           Full lyrics
         </label>
         <textarea
@@ -203,7 +203,7 @@ export default function PasteLyricsMode() {
           }
           className="min-h-[26rem] w-full flex-1 resize-y rounded-xl border border-white/10 bg-sanctuary-950 px-3 py-2 text-sm leading-relaxed text-stone-100 outline-none placeholder:text-stone-600 focus:border-gold-500/40 focus:ring-2 focus:ring-gold-400/15"
         />
-        <p className="mt-2 text-[11px] leading-relaxed text-stone-500">
+        <p className="mt-2 text-[12px] leading-relaxed text-stone-500">
           {blocks.length === 1 ? "1 block found" : `${blocks.length} blocks found`}
           {unused > 0 && (
             <span className="text-amber-300/90">
@@ -217,7 +217,7 @@ export default function PasteLyricsMode() {
 
       <div className="flex flex-col rounded-2xl border border-white/10 bg-sanctuary-900/50 p-3">
         <div className="mb-2 flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-500">
             Roadmap
           </p>
           {steps.length > 0 && (
@@ -226,14 +226,14 @@ export default function PasteLyricsMode() {
               onClick={() => {
                 if (confirmDialog("Clear the roadmap?")) commit(text, []);
               }}
-              className="rounded-lg px-2 py-0.5 text-[11px] font-medium text-stone-500 transition hover:bg-white/10 hover:text-stone-200"
+              className="rounded-lg px-2 py-0.5 text-[12px] font-medium text-stone-500 transition hover:bg-white/10 hover:text-stone-200"
             >
               Clear
             </button>
           )}
         </div>
 
-        <p className="mb-1.5 text-[10px] uppercase tracking-[0.14em] text-stone-600">New block</p>
+        <p className="mb-1.5 text-[11px] uppercase tracking-[0.14em] text-stone-600">New block</p>
         <div className="mb-3 flex flex-wrap gap-1.5">
           {SECTION_PALETTE.map((item) => {
             const dragId = `palette:${item.kind}`;
@@ -308,7 +308,7 @@ export default function PasteLyricsMode() {
                       onChange={(number) => commit(text, renumberStep(steps, step.id, number))}
                     />
                     {lines.length > 0 && (
-                      <span className="text-[10px] text-stone-500">
+                      <span className="text-[11px] text-stone-500">
                         {count === 1 ? "1 slide" : `${count} slides`}
                       </span>
                     )}
@@ -330,7 +330,7 @@ export default function PasteLyricsMode() {
                     </button>
                   </div>
                   <p
-                    className={`mt-1 truncate text-[11px] ${
+                    className={`mt-1 truncate text-[12px] ${
                       instrumental || lines.length ? "text-stone-400" : "text-amber-300/90"
                     }`}
                   >
@@ -348,7 +348,7 @@ export default function PasteLyricsMode() {
         </div>
 
         {unused > 0 && (
-          <p className="mt-2 truncate text-[11px] text-stone-500">
+          <p className="mt-2 truncate text-[12px] text-stone-500">
             Next new block: <span className="text-stone-300">{firstLine(blocks[used])}</span>
           </p>
         )}

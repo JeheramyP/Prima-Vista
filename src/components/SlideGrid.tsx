@@ -14,10 +14,10 @@ export default function SlideGrid() {
   return (
     <section className="flex min-h-0 flex-1 flex-col">
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Slide overview
         </h2>
-        <span className="text-[11px] text-stone-500">
+        <span className="text-[12px] text-stone-500">
           {slides.length ? `${currentIndex + 1} / ${slides.length}` : "0"}
         </span>
       </div>
@@ -38,7 +38,7 @@ export default function SlideGrid() {
             >
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span
-                  className={`rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide ${
                     slide.titleSlide
                       ? "border-gold-500/30 bg-gold-500/20 text-gold-200"
                       : kindTone(slide.kind)
@@ -46,18 +46,18 @@ export default function SlideGrid() {
                 >
                   {slide.sectionLabel}
                 </span>
-                <span className="text-[11px] tabular-nums text-stone-500">{index + 1}</span>
+                <span className="text-[12px] tabular-nums text-stone-500">{index + 1}</span>
               </div>
               {slide.titleSlide ? (
                 <div className="relative min-h-[4.4rem]">
-                  <p className="px-1 pt-1 text-center text-[15px] font-medium leading-snug text-stone-100">
+                  <p className="px-1 pt-1 text-center text-[17px] font-medium leading-snug text-stone-100">
                     {slide.lines[0]}
                   </p>
                   {slide.author ? (
-                    <p className="mt-2 text-right text-[11px] leading-snug text-stone-400">{slide.author}</p>
+                    <p className="mt-2 text-right text-[12px] leading-snug text-stone-400">{slide.author}</p>
                   ) : null}
                   {footer.length ? (
-                    <p className="mt-1 whitespace-pre-line text-[10px] leading-snug text-stone-500">
+                    <p className="mt-1 whitespace-pre-line text-[11px] leading-snug text-stone-500">
                       {footer.join("\n")}
                     </p>
                   ) : null}

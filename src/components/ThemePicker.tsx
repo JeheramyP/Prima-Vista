@@ -103,7 +103,7 @@ export default function ThemePicker() {
   return (
     <div className="relative">
       <div className="mb-2 flex items-center justify-between gap-3">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <span className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Song theme
         </span>
         <button

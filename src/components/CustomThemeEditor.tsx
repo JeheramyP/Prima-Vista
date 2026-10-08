@@ -157,7 +157,7 @@ export default function CustomThemeEditor({
       </div>
 
       <label className="mb-3 block">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <span className="mb-1 block text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Name
         </span>
         <input
@@ -174,7 +174,7 @@ export default function CustomThemeEditor({
       </label>
 
       <div className="mb-3">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <span className="mb-1 block text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Presets
         </span>
         <div className="flex flex-wrap gap-1.5">
@@ -193,7 +193,7 @@ export default function CustomThemeEditor({
       </div>
 
       <div className="mb-3">
-        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <span className="mb-1 block text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Style
         </span>
         <div role="radiogroup" aria-label="Background style" className="grid grid-cols-4 gap-1 rounded-lg bg-white/[0.04] p-1">
@@ -254,7 +254,7 @@ export default function CustomThemeEditor({
 
       {fill === "linear" && (
         <label className="mb-4 block">
-          <span className="mb-1 flex justify-between text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+          <span className="mb-1 flex justify-between text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
             Direction
             <span className="tracking-normal text-stone-400">{angle}°</span>
           </span>

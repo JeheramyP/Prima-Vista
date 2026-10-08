@@ -34,14 +34,14 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-3 flex items-center justify-between gap-2 px-1">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+        <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
           Songs
         </h2>
-        <span className="ml-auto text-[11px] text-stone-500">{results.length}</span>
+        <span className="ml-auto text-[12px] text-stone-500">{results.length}</span>
         <button
           type="button"
           onClick={handleNewSong}
-          className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[11px] font-medium text-gold-200 transition hover:bg-gold-500/20"
+          className="rounded-lg border border-gold-500/30 bg-gold-500/10 px-2 py-0.5 text-[12px] font-medium text-gold-200 transition hover:bg-gold-500/20"
         >
           New
         </button>
@@ -85,7 +85,7 @@ export default function SongList({ onNewSong }: { onNewSong?: () => void }) {
                 <div className="mt-0.5 flex items-center gap-2 text-xs text-stone-500">
                   <span className="truncate">{song.artist}</span>
                   {song.key && (
-                    <span className="rounded-md border border-white/10 px-1.5 py-0.5 text-[10px] tracking-wide text-gold-200">
+                    <span className="rounded-md border border-white/10 px-1.5 py-0.5 text-[11px] tracking-wide text-gold-200">
                       {song.key}
                     </span>
                   )}

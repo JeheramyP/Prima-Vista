@@ -141,7 +141,7 @@ export default function ControllerView() {
             <TabButton active={tab === "editor"} onClick={() => setTab("editor")}>
               Editor
             </TabButton>
-            <p className="ml-auto hidden text-[11px] text-stone-500 sm:block">
+            <p className="ml-auto hidden text-[12px] text-stone-500 sm:block">
               Space / arrows change slides · B blackout · C clear
             </p>
           </div>

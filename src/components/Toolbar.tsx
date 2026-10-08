@@ -56,7 +56,7 @@ export default function Toolbar() {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 bg-sanctuary-900/90 px-5 py-3 backdrop-blur">
       <div>
-        <p className="text-[11px] uppercase tracking-[0.28em] text-gold-400">Prima Vista</p>
+        <p className="text-[12px] uppercase tracking-[0.28em] text-gold-400">Prima Vista</p>
         <h1 className="font-display text-xl text-stone-50">
           {activeSong?.title ?? "No song selected"}
         </h1>
