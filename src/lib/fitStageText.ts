@@ -58,12 +58,31 @@ export function scriptureMeasure(): string {
 }
 
 /**
+ * Fitted size, as a fraction of the stage cap, below which another line is
+ * worth more than holding the current wrap. In the preview a 16-word line sat
+ * near 5px while one more line reached about 9px, and 9px is about this
+ * fraction of that card's cap. The projector uses the same ratio because the
+ * cap scales with the stage.
+ */
+export const SCRIPTURE_READABLE_FRACTION = 0.22;
+
+/** Smallest fitted size that should keep its line count. Below this, open another line. */
+export function scriptureReadableFloorPx(maxPx: number): number {
+  if (maxPx <= MIN_FONT_PX) return MIN_FONT_PX;
+  return Math.max(MIN_FONT_PX + 1, Math.round(maxPx * SCRIPTURE_READABLE_FRACTION));
+}
+
+/**
  * How many lines a passage may use before the type stops growing.
- * Short readings stay on one line across the stage. Longer readings may wrap,
- * and the fitter still shrinks the type if that wrap does not fit the height.
+ *
+ * About one line per nine words, up to 16. A short phrase still lands on one
+ * line, at roughly the size a longer reading uses once it wraps. A hard cutoff
+ * at 16 words pinned a full sentence to a single line and left it far smaller
+ * than a passage one word longer. The fitter may open further lines when that
+ * guess is still under `scriptureReadableFloorPx`, and it still shrinks the
+ * type if the wrap is taller than the stage.
  */
 export function scriptureLineBudget(text: string): number {
   const words = text.trim().split(/\s+/).filter(Boolean).length;
-  if (words <= 16) return 1;
-  return Math.min(16, Math.max(2, Math.ceil(words / 11)));
+  return Math.min(16, Math.max(1, Math.ceil(words / 9)));
 }

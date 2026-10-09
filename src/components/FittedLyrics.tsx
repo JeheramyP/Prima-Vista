@@ -12,6 +12,7 @@ import {
   MIN_FONT_PX,
   scriptureLineBudget,
   scriptureMeasure,
+  scriptureReadableFloorPx,
   stageFontCapPx,
 } from "../lib/fitStageText";
 import { titleSlideFooter } from "../lib/slides";
@@ -108,11 +109,30 @@ export default function FittedLyrics({
 
       const wordCount = lines.join(" ").trim().split(/\s+/).filter(Boolean).length;
       let lineBudget = balance ? Math.max(1, maxLines) : 0;
+      // A budget that spills even at the smallest size has to open up, or the
+      // passage runs off the stage.
       if (balance && wordCount > lineBudget && !fits(MIN_FONT_PX, lineBudget)) {
         while (lineBudget < wordCount && !fits(MIN_FONT_PX, lineBudget)) lineBudget += 1;
       }
 
       let next = largestSizeThatFits((px) => fits(px, lineBudget), MIN_FONT_PX, maxPx);
+      // The word budget is a guess. If the type is still a small fraction of
+      // the stage, spend another line while that actually grows the glyphs.
+      // Stop once the size clears the floor, another line stops helping, or a
+      // few extra lines have been tried — a short phrase should not become
+      // one word per line.
+      if (balance && wordCount > lineBudget) {
+        const floor = scriptureReadableFloorPx(maxPx);
+        const limit = Math.min(wordCount, Math.max(lineBudget, 16));
+        let opened = 0;
+        while (lineBudget < limit && next < floor && opened < 4) {
+          const withAnotherLine = largestSizeThatFits((px) => fits(px, lineBudget + 1), MIN_FONT_PX, maxPx);
+          if (withAnotherLine <= next) break;
+          lineBudget += 1;
+          next = withAnotherLine;
+          opened += 1;
+        }
+      }
       // Glyph widths can settle after the search (web fonts, optical size). Step down
       // against the layout we just forced so a long line cannot sit past the stage.
       let guard = 0;
