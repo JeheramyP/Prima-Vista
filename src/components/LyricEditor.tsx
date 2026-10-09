@@ -379,7 +379,7 @@ export default function LyricEditor() {
                     : "border-white/10 text-stone-500"
                 }`}
               >
-                Drag a verse, chorus, bridge, instrumental, or tag here to start the song.
+                Drag a section here to start the song.
               </p>
             )}
             {sections.map((section, index) => (

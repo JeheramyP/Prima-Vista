@@ -139,7 +139,7 @@ The editor has two modes. The mode you pick is remembered when you flip back to 
 Build the song as cards.
 
 1. Fill in title, artist, and key. The key is for the operator. It is not shown on the output.
-2. Drag **Verse**, **Chorus**, **Bridge**, **Instrumental**, or **Tag** into the arrangement, or drop one between cards.
+2. Drag **Intro**, **Verse**, **Pre-Chorus**, **Chorus**, **Bridge**, **Instrumental**, **Interlude**, **Tag**, or **Outro** into the arrangement, or drop one between cards.
 3. Type lyrics on each card. Every four lyric lines become one slide. A card that says "2 slides" will produce two lyric slides after you update.
 4. Drag a card's handle to reorder it. Duplicate a card when a part returns with the same words. Change the number chip when it should be labeled as the same part (`Chorus 1` sung again) or a new one (`Chorus 2`).
 5. Press **Update slides** or Ctrl/Cmd+Enter.

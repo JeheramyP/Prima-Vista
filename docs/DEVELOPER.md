@@ -151,7 +151,7 @@ SlidePayload   (wire format)
 
 `SongDraft` is the editor shape: `key` is always a string, never omitted.
 
-Section kinds: `verse`, `chorus`, `bridge`, `prechorus`, `tag`, `instrumental`, `intro`, `ending`, `other`. The palette the operator drags is only verse, chorus, bridge, instrumental, and tag. Paste headers can still produce the other kinds if you extend `HEADER_LINE` and the kind map. Today the paste splitter only uses headers to cut blocks. It does not read the header word as the section kind. The operator assigns kinds by dragging.
+Section kinds: `intro`, `verse`, `prechorus`, `chorus`, `bridge`, `instrumental`, `interlude`, `outro`, `tag`. The palette the operator drags is intro, verse, prechorus, chorus, bridge, instrumental, interlude, tag, and outro. Paste headers can still produce the other kinds if you extend `HEADER_LINE` and the kind map. Today the paste splitter only uses headers to cut blocks. It does not read the header word as the section kind. The operator assigns kinds by dragging. `ending` stays loadable for older songs and is not on the palette.
 
 ### Labels and numbers
 

@@ -16,6 +16,8 @@ export type SectionKind =
   | "tag"
   | "instrumental"
   | "intro"
+  | "outro"
+  | "interlude"
   | "ending"
   | "other";
 

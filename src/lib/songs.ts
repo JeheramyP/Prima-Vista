@@ -29,6 +29,8 @@ const SECTION_KINDS = new Set<SectionKind>([
   "tag",
   "instrumental",
   "intro",
+  "outro",
+  "interlude",
   "ending",
   "other",
 ]);

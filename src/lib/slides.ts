@@ -16,11 +16,15 @@ export const SECTION_KIND_DRAG_TYPE = "application/x-prima-vista-section-kind";
 export const SECTION_ID_DRAG_TYPE = "application/x-prima-vista-section";
 
 export const SECTION_PALETTE: { kind: SectionKind; name: string }[] = [
+  { kind: "intro", name: "Intro" },
   { kind: "verse", name: "Verse" },
+  { kind: "prechorus", name: "Pre-Chorus" },
   { kind: "chorus", name: "Chorus" },
   { kind: "bridge", name: "Bridge" },
   { kind: "instrumental", name: "Instrumental" },
+  { kind: "interlude", name: "Interlude" },
   { kind: "tag", name: "Tag" },
+  { kind: "outro", name: "Outro" },
 ];
 
 const KIND_NAME: Record<SectionKind, string> = {
@@ -31,6 +35,8 @@ const KIND_NAME: Record<SectionKind, string> = {
   tag: "Tag",
   instrumental: "Instrumental",
   intro: "Intro",
+  outro: "Outro",
+  interlude: "Interlude",
   ending: "Ending",
   other: "Section",
 };
@@ -149,6 +155,10 @@ export function kindTone(kind: SectionKind): string {
       return "bg-rose-500/20 text-rose-200 border-rose-400/30";
     case "intro":
       return "bg-emerald-500/20 text-emerald-200 border-emerald-400/30";
+    case "outro":
+      return "bg-orange-500/20 text-orange-200 border-orange-400/30";
+    case "interlude":
+      return "bg-teal-500/20 text-teal-200 border-teal-400/30";
     case "instrumental":
       return "bg-cyan-500/20 text-cyan-200 border-cyan-400/30";
     default:

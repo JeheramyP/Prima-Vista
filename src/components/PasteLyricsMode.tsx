@@ -6,7 +6,7 @@
  * and in `pasteCache` so leaving this tab does not throw them away, as long
  * as the draft sections still match what this mode last produced.
  */
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { confirmDialog } from "../lib/confirm";
 import {
   assignBlocks,
@@ -84,12 +84,20 @@ export default function PasteLyricsMode() {
   const listRef = useRef<HTMLDivElement>(null);
   const chipDragged = useRef(false);
   const writtenSignature = useRef(sectionsSignature(draft.sections));
+  const syncedSongId = useRef(songId);
 
-  useEffect(() => {
+  // An empty song signs as "[]", so the signature alone cannot tell two blanks
+  // apart. Leaving the previous song's text in the field makes the next commit
+  // write it into the song just selected.
+  useLayoutEffect(() => {
     const signature = sectionsSignature(draft.sections);
-    if (signature === writtenSignature.current) return;
+    const songChanged = syncedSongId.current !== songId;
+    if (!songChanged && signature === writtenSignature.current) return;
+    syncedSongId.current = songId;
     writtenSignature.current = signature;
-    const next = sectionsToPasteState(draft.sections);
+    const next = songChanged
+      ? initialState(songId, draft.sections)
+      : sectionsToPasteState(draft.sections);
     setText(next.text);
     setSteps(next.steps);
   }, [draft.sections, songId]);
