@@ -4,7 +4,8 @@
  * Accepts library songs and reorders its own rows. + Scripture appends a verse
  * slide; drag that row to place it. The drop index is the row whose midpoint
  * the pointer has passed. Clicking a row follows that entry from its first
- * slide. Clear asks for confirmation, then empties the list.
+ * slide. Clear asks for confirmation, then empties the list. It stays
+ * disabled while the output window is open.
  */
 import { useRef, useState, type DragEvent } from "react";
 import { confirmDialog } from "../lib/confirm";
@@ -26,6 +27,7 @@ export default function SetlistPanel() {
     removeFromSetlist,
     clearSetlist,
     selectSetlistEntry,
+    presentationOpen,
   } = usePresentation();
   const listRef = useRef<HTMLDivElement>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
@@ -91,10 +93,21 @@ export default function SetlistPanel() {
           {setlist.length > 0 && (
             <button
               type="button"
+              disabled={presentationOpen}
+              title={
+                presentationOpen
+                  ? "Close the output window before clearing the setlist"
+                  : "Remove every row from the setlist"
+              }
               onClick={() => {
+                if (presentationOpen) return;
                 if (confirmDialog("Remove everything from the setlist?")) clearSetlist();
               }}
-              className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[12px] font-medium text-stone-300 transition hover:border-white/20 hover:bg-white/[0.07]"
+              className={`rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[12px] font-medium transition disabled:cursor-default disabled:opacity-40 ${
+                presentationOpen
+                  ? "text-stone-500"
+                  : "text-stone-300 hover:border-white/20 hover:bg-white/[0.07]"
+              }`}
             >
               Clear
             </button>

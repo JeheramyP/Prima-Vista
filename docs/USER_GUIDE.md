@@ -60,7 +60,7 @@ The left column is the order of the gathering.
 - **+ Scripture** adds a reading at the end of the list and makes it live. Drag that row to the place it should be read.
 - Drag a setlist row by its handle to reorder it.
 - Click a song row to make that song live, starting at its title slide. Click a scripture row to present that reading.
-- Remove one row, or **Clear** the whole list. Clearing asks for confirmation and removes songs and scripture rows together.
+- Remove one row, or **Clear** the whole list. Clearing asks for confirmation and removes songs and scripture rows together. **Clear** stays disabled while the output window is open.
 - The same song can be on the setlist twice. Each row is its own cue, so editing the song updates both.
 
 The setlist is remembered on this computer. It is separate from the song library. If a song is deleted, its setlist rows disappear the next time the library finishes loading.
@@ -79,6 +79,8 @@ While the reading is live, the song editor is replaced by two fields:
 The theme row is labeled **Slide theme** while a reading is live. The choice is saved on that setlist row and paints the preview and the output. A new reading starts on Sanctuary. Changing it does not change any song.
 
 Ctrl/Cmd+Enter does nothing while a reading is on screen, so it cannot write the song that was open before.
+
+Removing that live reading, or clearing the setlist while it is on screen, stops presenting it and brings back the song that was open before it, on the same slide. Removing a different row leaves the reading up.
 
 ## Library and search
 

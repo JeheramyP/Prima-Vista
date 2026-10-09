@@ -88,7 +88,7 @@ function writeDraftOntoSong(song: Song, draft: SongDraft) {
 
 type SlidePosition = "first" | "last";
 
-type ShowSongOptions = { keepScreen?: boolean };
+type ShowSongOptions = { keepScreen?: boolean; keepDraft?: boolean };
 
 export type SetlistItem =
   | { kind: "song"; entry: SetlistEntry & { songId: string }; song: Song }
@@ -198,6 +198,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const activeSongRef = useRef(activeSong);
   activeSongRef.current = activeSong;
   const presentingScriptureRef = useRef(false);
+  /** Song on screen before this reading, restored when that reading is removed. */
+  const songBeforeScriptureRef = useRef<{ songId: string; index: number } | null>(null);
+  const leaveScriptureRef = useRef<() => void>(() => {});
+  const activeEntryIdRef = useRef(activeEntryId);
+  activeEntryIdRef.current = activeEntryId;
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const currentIndexRef = useRef(currentIndex);
@@ -271,7 +276,11 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   }, [presentingScripture, activeEntryId, setlist]);
 
   useEffect(() => {
-    if (!activeScripture) return;
+    if (!activeScripture) {
+      // The row is gone. Exit scripture mode, or this return leaves the passage on screen.
+      if (presentingScriptureRef.current) leaveScriptureRef.current();
+      return;
+    }
     const nextSlides = scriptureToSlides(activeScripture);
     setSlides((current) => {
       const same =
@@ -487,6 +496,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
    */
   const showSong = useCallback(
     (song: Song, position: SlidePosition = "first", options?: ShowSongOptions) => {
+      songBeforeScriptureRef.current = null;
       flushPendingNewSong();
       presentingScriptureRef.current = false;
       setPresentingScripture(false);
@@ -494,8 +504,13 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       selectionTouchedRef.current = true;
       const songSlides = songToSlides(fresh);
       const nextIndex = position === "last" ? Math.max(0, songSlides.length - 1) : 0;
+      activeSongRef.current = fresh;
       setActiveSong(fresh);
-      setDraftState(songToDraft(fresh));
+      if (!options?.keepDraft) {
+        const nextDraft = songToDraft(fresh);
+        draftRef.current = nextDraft;
+        setDraftState(nextDraft);
+      }
       setSlides(songSlides);
       setCurrentIndex(nextIndex);
       if (!options?.keepScreen) {
@@ -508,12 +523,19 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
 
   const showScripture = useCallback(
     (entry: ScriptureSetlistEntry, position: SlidePosition = "first", options?: ShowSongOptions) => {
+      if (activeSongRef.current) {
+        songBeforeScriptureRef.current = {
+          songId: activeSongRef.current.id,
+          index: currentIndexRef.current,
+        };
+      }
       flushPendingNewSong();
       selectionTouchedRef.current = true;
       presentingScriptureRef.current = true;
       setPresentingScripture(true);
       const nextSlides = scriptureToSlides(entry);
       const nextIndex = position === "last" ? Math.max(0, nextSlides.length - 1) : 0;
+      activeSongRef.current = null;
       setActiveSong(null);
       setSlides(nextSlides);
       setCurrentIndex(nextIndex);
@@ -591,10 +613,47 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  /**
+   * The live reading was removed. Scripture mode has to end here: once the row
+   * is gone, `activeScripture` is null and the slide effect will not clear the
+   * passage. Puts the song that was open before the reading back on screen.
+   */
+  const leaveScripture = useCallback(() => {
+    if (!presentingScriptureRef.current) return;
+    const remembered = songBeforeScriptureRef.current;
+    songBeforeScriptureRef.current = null;
+    presentingScriptureRef.current = false;
+    const fresh = remembered
+      ? (SONG_LIBRARY.find((song) => song.id === remembered.songId) ?? null)
+      : null;
+    const song = fresh ?? SONG_LIBRARY[0] ?? null;
+    if (!song) {
+      setPresentingScripture(false);
+      selectionTouchedRef.current = true;
+      activeSongRef.current = null;
+      draftRef.current = EMPTY_DRAFT;
+      setActiveSong(null);
+      setDraftState(EMPTY_DRAFT);
+      setSlides([]);
+      setCurrentIndex(0);
+      setClear(false);
+      setBlackout(false);
+      return;
+    }
+    showSong(song, "first", { keepDraft: Boolean(fresh) });
+    if (!fresh || !remembered) return;
+    const songSlides = songToSlides(fresh);
+    setCurrentIndex(Math.min(remembered.index, Math.max(0, songSlides.length - 1)));
+  }, [showSong]);
+  leaveScriptureRef.current = leaveScripture;
+
   const removeFromSetlist = useCallback((entryId: string) => {
+    const removingLiveScripture =
+      presentingScriptureRef.current && activeEntryIdRef.current === entryId;
     setSetlistEntries((entries) => entries.filter((entry) => entry.id !== entryId));
     setActiveEntryId((current) => (current === entryId ? null : current));
-  }, []);
+    if (removingLiveScripture) leaveScripture();
+  }, [leaveScripture]);
 
   const moveSetlistEntry = useCallback((entryId: string, toIndex: number) => {
     setSetlistEntries((entries) => {
@@ -612,9 +671,12 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearSetlist = useCallback(() => {
+    if (presentationOpen) return;
+    const leavingScripture = presentingScriptureRef.current;
     setSetlistEntries([]);
     setActiveEntryId(null);
-  }, []);
+    if (leavingScripture) leaveScripture();
+  }, [leaveScripture, presentationOpen]);
 
   const nextSetlistItem = activeSetlistIndex === -1 ? undefined : setlist[activeSetlistIndex + 1];
   const prevSetlistItem = activeSetlistIndex > 0 ? setlist[activeSetlistIndex - 1] : undefined;
@@ -635,6 +697,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     pendingNewIdRef.current = song.id;
     mirroredNewIdsRef.current.add(song.id);
     selectionTouchedRef.current = true;
+    songBeforeScriptureRef.current = null;
     presentingScriptureRef.current = false;
     setPresentingScripture(false);
     activeSongRef.current = song;
@@ -685,6 +748,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     pendingNewIdRef.current = blank.id;
     mirroredNewIdsRef.current.add(blank.id);
     selectionTouchedRef.current = true;
+    songBeforeScriptureRef.current = null;
     presentingScriptureRef.current = false;
     setPresentingScripture(false);
     activeSongRef.current = blank;
