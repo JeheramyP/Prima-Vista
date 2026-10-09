@@ -43,7 +43,7 @@ The controller is three columns:
 
 1. **Setlist.** An ordered run of songs for this gathering, with scripture readings placed among them. The same song can appear more than once. Drag a library row in, add a scripture row with **+ Scripture**, reorder rows, or remove them. Advancing past the last slide of a song moves to the next setlist row. Stepping back from the first slide moves to the previous row's last slide. A scripture reading is a single slide.
 2. **Library.** Search by title, artist, or lyric line. A fresh install starts with an empty library. Songs you add are saved on this computer.
-3. **Stage.** Current and next preview, theme picker, then either the slide grid or the lyric editor.
+3. **Stage.** Theme picker, current and next preview, then either the slide grid or the lyric editor. The whole column scrolls as one panel, so the theme row and previews move with the slide grid, the lyric editor, or a live scripture reading.
 
 **Blackout** paints the output solid black. **Clear** hides the words and keeps the song's background. The two modes cancel each other. Moving to the next song in the setlist keeps whichever mode is on. Choosing a song from the library turns both off.
 

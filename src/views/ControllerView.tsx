@@ -2,7 +2,9 @@
  * Controller layout.
  *
  * Three columns: setlist, library search, then theme, previews, and either
- * the slide grid or the lyric editor. Keyboard shortcuts are registered here
+ * the slide grid or the lyric editor. The whole stage column scrolls as one
+ * panel, so the theme row and previews move with whichever pane is below
+ * them. Keyboard shortcuts are registered here
  * so they apply across those panes, and they skip events while a field is
  * being typed in. Ctrl/Cmd+Enter still runs Update slides from a field.
  */
@@ -134,15 +136,13 @@ export default function ControllerView() {
             <SongList onNewSong={() => setTab("editor")} />
           </div>
         </aside>
-        <main className="flex min-h-0 flex-col gap-4 overflow-hidden p-4">
+        <main className="flex min-h-0 flex-col gap-4 overflow-y-auto p-4">
           <ThemePicker />
           <DualPreview />
           {presentingScripture ? (
             <>
               {activeScripture ? <ScriptureEditor /> : null}
-              <div className="min-h-0 flex-1 overflow-auto">
-                <SlideGrid />
-              </div>
+              <SlideGrid />
             </>
           ) : (
             <>
@@ -157,9 +157,7 @@ export default function ControllerView() {
                   Space / arrows change slides · B blackout · C clear
                 </p>
               </div>
-              <div className="min-h-0 flex-1 overflow-auto">
-                {tab === "overview" ? <SlideGrid /> : <LyricEditor />}
-              </div>
+              {tab === "overview" ? <SlideGrid /> : <LyricEditor />}
             </>
           )}
         </main>

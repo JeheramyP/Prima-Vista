@@ -130,6 +130,8 @@ Deleting a custom theme asks for confirmation. Songs that used it return to Sanc
 
 Switch the main pane from **Slides** to **Editor**. The Slides grid is a map of the current song: title card first, then lyric slides. Click a tile to jump the live output there.
 
+The theme row, the previews, and the pane below them scroll together as one column. That is the slide grid on the Slides tab, the lyric editor on the Editor tab, and the passage fields plus the slide grid while a scripture reading is live. Scroll down for the rest of a long song, and scroll back up to see the previews.
+
 The editor has two modes. The mode you pick is remembered when you flip back to Slides.
 
 ### Sections
