@@ -65,12 +65,31 @@ export type Slide = {
   ccli?: string;
   /** Copyright notice shown on a title slide. */
   copyright?: string;
+  /** Verse reading. The citation is `reference`, not a lyric line. */
+  scriptureSlide?: boolean;
+  /** Bible reference shown with a scripture slide. */
+  reference?: string;
 };
 
-export type SetlistEntry = {
+/** A queued song. The same song can appear more than once. */
+export type SongSetlistEntry = {
   id: string;
   songId: string;
 };
+
+/** A verse reading queued between songs. Stored on the setlist, not in the library. */
+export type ScriptureSetlistEntry = {
+  id: string;
+  kind: "scripture";
+  /** Passage reference, such as "John 3:16". */
+  reference: string;
+  /** Verse text. The slide reflows it onto one reading; line breaks are kept as spaces. */
+  text: string;
+  /** Output look. Missing values use the Sanctuary theme. */
+  theme?: StageThemeId;
+};
+
+export type SetlistEntry = SongSetlistEntry | ScriptureSetlistEntry;
 
 export type SlidePayload = {
   songTitle: string;
@@ -90,6 +109,10 @@ export type SlidePayload = {
   ccli?: string;
   /** Copyright notice. Shown on a title slide when set. */
   copyright?: string;
+  /** Verse reading. The citation is `reference`. */
+  scriptureSlide?: boolean;
+  /** Bible reference shown under the verse. */
+  reference?: string;
 };
 
 export type PrimaVistaAPI = {

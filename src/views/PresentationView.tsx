@@ -7,7 +7,7 @@
  * top strip is a window drag region. Double-click leaves fullscreen.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import FittedLyrics, { LYRIC_STAGE_INSET, StageTitle } from "../components/FittedLyrics";
+import FittedLyrics, { LYRIC_STAGE_INSET, StageScripture, StageTitle } from "../components/FittedLyrics";
 import {
   isCustomThemeRecord,
   songThemeId,
@@ -90,6 +90,7 @@ export default function PresentationView() {
 
   const hidden = slide.blackout || slide.clear || !slide.lines.length;
   const showTitle = Boolean(slide.titleSlide) && !hidden;
+  const showScripture = Boolean(slide.scriptureSlide) && !slide.blackout && !slide.clear;
 
   return (
     <div
@@ -106,7 +107,9 @@ export default function PresentationView() {
           style={{ borderColor: theme.frame }}
         />
       )}
-      {slide.blackout ? null : showTitle ? (
+      {slide.blackout ? null : showScripture ? (
+        <StageScripture lines={slide.lines} reference={slide.reference} theme={theme} />
+      ) : showTitle ? (
         <StageTitle
           title={slide.songTitle}
           author={slide.artist}

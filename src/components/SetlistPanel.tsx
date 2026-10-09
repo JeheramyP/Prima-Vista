@@ -1,9 +1,10 @@
 /**
  * Setlist column.
  *
- * Accepts library songs and reorders its own rows. The drop index is the row
- * whose midpoint the pointer has passed. Clicking a row follows that entry
- * from its first slide. Clear asks for confirmation, then empties the list.
+ * Accepts library songs and reorders its own rows. + Scripture appends a verse
+ * slide; drag that row to place it. The drop index is the row whose midpoint
+ * the pointer has passed. Clicking a row follows that entry from its first
+ * slide. Clear asks for confirmation, then empties the list.
  */
 import { useRef, useState, type DragEvent } from "react";
 import { confirmDialog } from "../lib/confirm";
@@ -20,6 +21,7 @@ export default function SetlistPanel() {
     setlist,
     activeEntryId,
     addToSetlist,
+    addScriptureToSetlist,
     moveSetlistEntry,
     removeFromSetlist,
     clearSetlist,
@@ -70,22 +72,34 @@ export default function SetlistPanel() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between gap-2 px-1">
-        <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-          Setlist
-        </h2>
-        <span className="ml-auto text-[12px] text-stone-500">{setlist.length}</span>
-        {setlist.length > 0 && (
+      <div className="mb-3 px-1">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
+            Setlist
+          </h2>
+          <span className="text-[12px] text-stone-500">{setlist.length}</span>
+        </div>
+        <div className="mt-2 flex items-center gap-2">
           <button
             type="button"
-            onClick={() => {
-              if (confirmDialog("Remove every song from the setlist?")) clearSetlist();
-            }}
+            onClick={() => addScriptureToSetlist()}
+            title="Add a scripture slide at the end of the setlist"
             className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[12px] font-medium text-stone-300 transition hover:border-white/20 hover:bg-white/[0.07]"
           >
-            Clear
+            + Scripture
           </button>
-        )}
+          {setlist.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                if (confirmDialog("Remove everything from the setlist?")) clearSetlist();
+              }}
+              className="rounded-lg border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[12px] font-medium text-stone-300 transition hover:border-white/20 hover:bg-white/[0.07]"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
       <div
         ref={listRef}
@@ -109,6 +123,7 @@ export default function SetlistPanel() {
         {setlist.map((item, index) => {
           const active = item.entry.id === activeEntryId;
           const upNext = activeIndex !== -1 && index === activeIndex + 1;
+          const title = item.kind === "scripture" ? item.entry.reference.trim() || "Scripture" : item.song.title;
           return (
             <div key={item.entry.id}>
               {dropIndex === index && dropMarker}
@@ -145,19 +160,27 @@ export default function SetlistPanel() {
                     {index + 1}
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-stone-100">
-                      {item.song.title}
-                    </span>
-                    <span className="mt-0.5 flex items-center gap-2 text-[12px] text-stone-500">
-                      {item.song.key && <span className="text-gold-200">{item.song.key}</span>}
-                      {active && <span className="uppercase tracking-wide text-gold-300">Live</span>}
-                      {upNext && <span className="uppercase tracking-wide text-stone-400">Up next</span>}
-                    </span>
+                    <span className="block truncate text-sm font-medium text-stone-100">{title}</span>
+                    {(item.kind === "song" && item.song.key) ||
+                    (item.kind === "scripture" && item.entry.reference.trim()) ||
+                    active ||
+                    upNext ? (
+                      <span className="mt-0.5 flex items-center gap-2 text-[12px] text-stone-500">
+                        {item.kind === "song" && item.song.key && (
+                          <span className="text-gold-200">{item.song.key}</span>
+                        )}
+                        {item.kind === "scripture" && item.entry.reference.trim() && (
+                          <span className="uppercase tracking-wide text-sky-200/90">Scripture</span>
+                        )}
+                        {active && <span className="uppercase tracking-wide text-gold-300">Live</span>}
+                        {upNext && <span className="uppercase tracking-wide text-stone-400">Up next</span>}
+                      </span>
+                    ) : null}
                   </span>
                 </button>
                 <button
                   type="button"
-                  aria-label={`Remove ${item.song.title} from setlist`}
+                  aria-label={`Remove ${title} from setlist`}
                   title="Remove from setlist"
                   onClick={() => removeFromSetlist(item.entry.id)}
                   className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-stone-500 opacity-0 transition hover:bg-white/10 hover:text-stone-200 focus:opacity-100 group-hover:opacity-100"

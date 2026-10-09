@@ -64,12 +64,14 @@ State that matters:
 | --- | --- |
 | `activeSong` | Song currently on screen. May be a library object or a freshly inserted blank. |
 | `draft` | Editor copy. Section mode and paste mode both write this. |
-| `slides` | Derived with `songToSlides`. The live index points into this array. |
+| `slides` | Derived with `songToSlides`, or `scriptureToSlides` while a reading is live. The live index points into this array. |
 | `currentIndex` | Slide shown on the output. |
 | `blackout`, `clear` | Mutually exclusive in the UI. Both can be false. The payload sends both flags. The output treats either as "hide words." Blackout also replaces the background with black. |
-| `setlist` | `{ entry, song }` pairs. Entries whose song disappeared are omitted. |
+| `setlist` | Song rows are `{ kind: "song", entry, song }`. Scripture rows are `{ kind: "scripture", entry }`. A song row whose song disappeared is omitted. Scripture rows have no library song. |
 | `activeEntryId` | Setlist row being followed. `null` when the operator picked a song from the library, so Next/Previous stay inside that song. |
-| `upcoming` | Next slide in the song, or the next setlist song's first slide. |
+| `activeScripture` | The live scripture entry when that row is still in the setlist. Otherwise `null`. |
+| `presentingScripture` | The live slides come from a scripture row, so the song editor is hidden and `applyEditor` does not run. |
+| `upcoming` | Next slide in the current song, or the next setlist row's opening cue: a title slide, or that row's scripture slide. |
 | `libraryVersion` | Bumped when `SONG_LIBRARY` is mutated in place, so memos that read the array recompute. |
 | `savedThemes` | Custom themes plus built-in overrides. Split into `customThemes` and `defaultOverrides` for the picker. |
 
@@ -79,13 +81,15 @@ State that matters:
 
 A `useMemo` builds a `SlidePayload` from the active song, current slide, index, blackout, clear, and theme. An effect calls `setSlide` whenever that object changes. `draftRevision` and `savedThemes` are dependencies so a title-card tweak or a theme edit republishes even when the song object identity does not change.
 
-`customTheme` on the payload is `customThemeRecord(songThemeId)`. For an unedited built-in theme that lookup misses, and the output uses `stageThemeById` on the theme id alone. For an override or a user theme, the record rides along and `themeFromRecord` paints it.
+`customTheme` on the payload is `customThemeRecord(songThemeId)`. For an unedited built-in theme that lookup misses, and the output uses `stageThemeById` on the theme id alone. For an override or a user theme, the record rides along and `themeFromRecord` paints it. A scripture slide uses `songThemeId(activeScripture)` instead of the song. `songThemeId` only reads `theme`, so a reading with no theme also falls back to Sanctuary.
 
 ### New songs versus saved songs
 
 `createNewSong` pushes a blank song (`custom-<timestamp>-<serial>`) onto `SONG_LIBRARY` and remembers its id in `mirroredNewIdsRef`.
 
 While that id is active, a layout effect copies the draft onto the library object as the operator types, patches the title slide's lines, and debounces `saveSong` by 300ms. That is why a new song's title shows up in the library and on the title card before Update slides.
+
+`applyEditor` returns immediately while `presentingScriptureRef` is set, so Ctrl/Cmd+Enter cannot write the song draft left over from the previous cue.
 
 `applyEditor` is the path for every song, including new ones:
 
@@ -102,11 +106,13 @@ If the library file loads after the operator already started a new song, the loa
 
 ### Setlist navigation
 
-`next` at the last slide of a followed setlist row calls `selectSetlistEntry` on the next row with `keepScreen: true`, which does not clear blackout or clear. `prev` at index 0 jumps to the previous row's last slide the same way. `selectSong` from the library clears `activeEntryId` and resets both flags.
+`next` at the last slide of a followed setlist row calls `selectSetlistEntry` on the next row with `keepScreen: true`, which does not clear blackout or clear. `prev` at index 0 jumps to the previous row's last slide the same way. A scripture row has one slide, so either key leaves it. `selectSong` from the library clears `activeEntryId`, clears `presentingScripture`, and resets both screen flags.
 
-Setlist order is `SetlistEntry[]` in `localStorage` (`prima-vista-setlist`). Each entry is `{ id, songId }`. Move operations treat `toIndex` as an insertion index measured before the row is removed, then adjust when the row is sliding downward. The same adjustment is used for section cards and paste-roadmap steps.
+Setlist order is `SetlistEntry[]` in `localStorage` (`prima-vista-setlist`). A song entry is `{ id, songId }`. A scripture entry is `{ id, kind: "scripture", reference, text, theme? }`. `isEntry` accepts both. A scripture `theme` that is present and not a string fails validation, and a failed entry rejects the whole stored list. Older song entries have no `kind` and still load. `createScriptureEntry` appends a blank reading; the operator reorders it by drag. Move operations treat `toIndex` as an insertion index measured before the row is removed, then adjust when the row is sliding downward. The same adjustment is used for section cards and paste-roadmap steps.
 
-Songs missing from the library are filtered out of the setlist once `libraryReady` is true.
+`updateScripture` merges `reference`, `text`, and `theme` inside the functional setlist update, so typing in both fields cannot clobber one of them. An effect rebuilds slides from `scriptureToSlides` when the live entry changes. `setSongTheme` writes the theme onto that entry when a reading is live, and returns without touching a song. Creating a custom theme still calls `setSongTheme`, so a new look applies to the reading on screen.
+
+Songs missing from the library are filtered out of the setlist once `libraryReady` is true. Scripture entries have no `songId`, so that filter leaves them in place. `deleteSong` does the same.
 
 ### Save errors
 
@@ -114,7 +120,7 @@ Songs missing from the library are filtered out of the setlist once `libraryRead
 
 `deleteSong` adds the id to `removedSongIds` before the write. A `saveSong` that was already in flight cannot append the deleted song back onto the array after the splice.
 
-Theme writes use the same queue (`themeWriteTail`) and the same banner. `persistThemes` reports through `subscribeThemeSaveError`. `addCustomTheme` registers the theme in memory, updates the picker, applies a brand-new theme to the current song, then awaits the write. An update of an existing id does not change the song's theme selection. A failed write stays on screen and is announced in the banner. It is missing after the next launch until a later save succeeds.
+Theme writes use the same queue (`themeWriteTail`) and the same banner. `persistThemes` reports through `subscribeThemeSaveError`. `addCustomTheme` registers the theme in memory, updates the picker, applies a brand-new theme to the live song or scripture reading, then awaits the write. An update of an existing id does not change the song's theme selection. A failed write stays on screen and is announced in the banner. It is missing after the next launch until a later save succeeds.
 
 ## Domain model
 
@@ -127,12 +133,18 @@ Song
 LyricSection
   id, kind, label, number?, lines[]
 
+SetlistEntry
+  Song:       { id, songId }
+  Scripture:  { id, kind: "scripture", reference, text, theme? }
+
 Slide          (derived)
-  id, sectionId, sectionLabel, kind, lines, titleSlide?, author?
+  id, sectionId, sectionLabel, kind, lines, titleSlide?, author?,
+  scriptureSlide?, reference?
 
 SlidePayload   (wire format)
   songTitle, artist, sectionLabel, lines, index, total,
-  blackout, clear, theme, customTheme?, titleSlide?
+  blackout, clear, theme, customTheme?, titleSlide?,
+  scriptureSlide?, reference?
 ```
 
 `SongDraft` is the editor shape: `key` is always a string, never omitted.
@@ -150,6 +162,8 @@ Section kinds: `verse`, `chorus`, `bridge`, `prechorus`, `tag`, `instrumental`, 
 `displayLabel` always appends the number for verse, chorus, and other. Every other kind is numbered only when more than one distinct number of that kind exists, so a single bridge reads "Bridge".
 
 `LINES_PER_SLIDE` is 4. Slide ids are `${section.id}-${chunkIndex}`. The title slide id is `${song.id}:title`. `applyEditor` uses those ids to keep the live index stable.
+
+`scriptureToSlides` returns one slide, id `${entry.id}:scripture`. Newlines in the passage are trimmed and joined with spaces, so the stored line breaks are not the stage line breaks. The reference is `slide.reference`, not a lyric line. An empty passage still produces the slide, with no verse lines.
 
 ### Paste roadmap
 
@@ -200,6 +214,8 @@ Luminance uses the sRGB coefficients. Average luminance above 0.4 selects dark t
 4. `ResizeObserver`, `document.fonts` `loadingdone`, and an explicit `fonts.load` of the theme family all remeasure. The families are local files, so that pass is not waiting on a network font.
 
 Lyric lines use `whitespace-nowrap` and shrink. Title lines wrap, with `maxWidth` `14ch`. `theme.sizeScale` multiplies the chosen size so condensed faces (High Contrast) and display faces (Cathedral) stay balanced. The output and `DualPreview` share `LYRIC_STAGE_INSET` and `StageTitle`, so the preview is the same layout as the projector, not a separate design.
+
+Scripture uses `StageScripture` on both windows. The verse block is the full stage width (`scriptureMeasure` returns `100%`). A narrow column is what stacked a short reading into one word per line. `scriptureLineBudget` stops the type from growing past one line when the passage is 16 words or fewer, and past about one line per 11 words after that, up to 16 lines. The usual fit then shrinks the type if that wrap is taller than the stage. The line count comes from text-node client rects. A range over the element also returns the block box, which would look like an extra line and pin the type near 1px. The citation is a separate muted line under the verse. `text-wrap: pretty` evens the breaks. Balanced text sets a definite width and checks `scrollWidth` against that box. `w-max` would report the unwrapped line, and the search would fail down to `MIN_FONT_PX`.
 
 ## Drag and drop
 

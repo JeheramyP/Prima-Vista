@@ -10,7 +10,7 @@
  * grip changes that width. The choice is stored on this computer.
  */
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import FittedLyrics, { LYRIC_STAGE_INSET, StageTitle } from "./FittedLyrics";
+import FittedLyrics, { LYRIC_STAGE_INSET, StageScripture, StageTitle } from "./FittedLyrics";
 import {
   songThemeId,
   stageEdgeColor,
@@ -59,6 +59,8 @@ function PreviewCard({
   theme,
   blackout,
   titleSlide,
+  scriptureSlide,
+  reference,
   author,
   ccli,
   copyright,
@@ -70,6 +72,8 @@ function PreviewCard({
   theme: StageTheme;
   blackout?: boolean;
   titleSlide?: boolean;
+  scriptureSlide?: boolean;
+  reference?: string;
   author?: string;
   ccli?: string;
   copyright?: string;
@@ -92,7 +96,9 @@ function PreviewCard({
         }`}
         style={surface}
       >
-        {blackout ? null : titleSlide && lines.length ? (
+        {blackout ? null : scriptureSlide && (lines.some((line) => line.trim()) || reference?.trim()) ? (
+          <StageScripture lines={lines} reference={reference} theme={theme} />
+        ) : titleSlide && lines.length ? (
           <StageTitle
             title={lines[0] ?? ""}
             author={author}
@@ -118,18 +124,24 @@ function PreviewCard({
 }
 
 export default function DualPreview() {
-  const { activeSong, slides, currentIndex, blackout, clear, upcoming } = usePresentation();
-  const theme = stageThemeById(songThemeId(activeSong));
-  const nextTheme = stageThemeById(upcoming?.theme ?? songThemeId(activeSong));
+  const { activeSong, activeScripture, slides, currentIndex, blackout, clear, upcoming } = usePresentation();
   const current = slides[currentIndex];
+  const theme = stageThemeById(
+    current?.scriptureSlide ? songThemeId(activeScripture) : songThemeId(activeSong),
+  );
+  const nextTheme = stageThemeById(upcoming?.theme ?? songThemeId(activeSong));
 
   const currentLines = blackout || clear ? [] : current?.lines ?? [];
   const nextLines = upcoming?.slide.lines ?? [];
   const currentTitle = !blackout && !clear && current?.titleSlide;
+  const currentScripture = !blackout && !clear && current?.scriptureSlide;
   const nextTitle = upcoming?.slide.titleSlide;
+  const nextScripture = upcoming?.slide.scriptureSlide;
   const nextSection = upcoming?.songTitle
     ? `${upcoming.songTitle} · ${upcoming.slide.sectionLabel}`
-    : upcoming?.slide.sectionLabel;
+    : nextScripture
+      ? upcoming?.slide.reference || "Scripture"
+      : upcoming?.slide.sectionLabel;
 
   const slotRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; width: number } | null>(null);
@@ -214,11 +226,21 @@ export default function DualPreview() {
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-4">
           <PreviewCard
             label="Current slide"
-            section={blackout ? "Blackout" : clear ? "Clear" : current?.sectionLabel}
+            section={
+              blackout
+                ? "Blackout"
+                : clear
+                  ? "Clear"
+                  : currentScripture
+                    ? current?.reference || "Scripture"
+                    : current?.sectionLabel
+            }
             lines={currentLines}
             theme={theme}
             blackout={blackout}
             titleSlide={currentTitle}
+            scriptureSlide={currentScripture}
+            reference={currentScripture ? current?.reference : undefined}
             author={current?.author}
             ccli={current?.ccli}
             copyright={current?.copyright}
@@ -230,6 +252,8 @@ export default function DualPreview() {
             theme={nextTheme}
             muted
             titleSlide={nextTitle}
+            scriptureSlide={nextScripture}
+            reference={nextScripture ? upcoming?.slide.reference : undefined}
             author={upcoming?.slide.author}
             ccli={upcoming?.slide.ccli}
             copyright={upcoming?.slide.copyright}

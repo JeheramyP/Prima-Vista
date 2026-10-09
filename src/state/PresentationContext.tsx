@@ -34,7 +34,7 @@ import {
   resetDefaultThemes as resetStoredDefaultThemes,
   saveCustomTheme,
 } from "../lib/customThemes";
-import { draftToSong, EMPTY_DRAFT, songToDraft, songToSlides } from "../lib/slides";
+import { draftToSong, EMPTY_DRAFT, scriptureToSlides, songToDraft, songToSlides } from "../lib/slides";
 import {
   deleteSong as deleteSongFromLibrary,
   getSongById,
@@ -43,8 +43,8 @@ import {
   searchSongs,
   SONG_LIBRARY,
 } from "../lib/songs";
-import { createEntry, loadSetlist, saveSetlist } from "../lib/setlist";
-import type { SetlistEntry, Slide, SlidePayload, Song, SongDraft } from "../types";
+import { createEntry, createScriptureEntry, isScriptureEntry, loadSetlist, saveSetlist } from "../lib/setlist";
+import type { ScriptureSetlistEntry, SetlistEntry, Slide, SlidePayload, Song, SongDraft } from "../types";
 
 const PROVISIONAL_REUSE_MS = 1000;
 
@@ -90,9 +90,23 @@ type SlidePosition = "first" | "last";
 
 type ShowSongOptions = { keepScreen?: boolean };
 
-export type SetlistItem = { entry: SetlistEntry; song: Song };
+export type SetlistItem =
+  | { kind: "song"; entry: SetlistEntry & { songId: string }; song: Song }
+  | { kind: "scripture"; entry: ScriptureSetlistEntry };
 
 export type UpcomingSlide = { slide: Slide; songTitle?: string; theme: StageThemeId };
+
+/** First cue of a setlist row: a song's title slide, or the first scripture slide. */
+function openingCue(item: SetlistItem): UpcomingSlide | null {
+  if (item.kind === "scripture") {
+    const slide = scriptureToSlides(item.entry)[0];
+    return slide ? { slide, theme: songThemeId(item.entry) } : null;
+  }
+  const slide = songToSlides(item.song)[0];
+  return slide
+    ? { slide, songTitle: item.song.title, theme: songThemeId(item.song) }
+    : null;
+}
 
 type PresentationState = {
   query: string;
@@ -109,8 +123,15 @@ type PresentationState = {
   presentationFullscreen: boolean;
   setlist: SetlistItem[];
   activeEntryId: string | null;
+  /** The scripture row on screen, when that row is still in the setlist. */
+  activeScripture: ScriptureSetlistEntry | null;
+  /** Live slides are a scripture reading, so the song editor stays out of the way. */
+  presentingScripture: boolean;
   upcoming: UpcomingSlide | null;
   addToSetlist: (songId: string, index?: number) => void;
+  /** Inserts a blank scripture slide at `index` and makes it the live cue. */
+  addScriptureToSetlist: (index?: number) => void;
+  updateScripture: (entryId: string, patch: { reference?: string; text?: string; theme?: StageThemeId }) => void;
   removeFromSetlist: (entryId: string) => void;
   moveSetlistEntry: (entryId: string, toIndex: number) => void;
   clearSetlist: () => void;
@@ -164,6 +185,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const [libraryReady, setLibraryReady] = useState(false);
   const [setlistEntries, setSetlistEntries] = useState<SetlistEntry[]>(loadSetlist);
   const [activeEntryId, setActiveEntryId] = useState<string | null>(null);
+  const [presentingScripture, setPresentingScripture] = useState(false);
   const [savedThemes, setSavedThemes] = useState<CustomThemeRecord[]>([]);
   const customThemes = useMemo(
     () => savedThemes.filter((theme) => !isDefaultThemeId(theme.id)),
@@ -175,6 +197,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   );
   const activeSongRef = useRef(activeSong);
   activeSongRef.current = activeSong;
+  const presentingScriptureRef = useRef(false);
   const draftRef = useRef(draft);
   draftRef.current = draft;
   const currentIndexRef = useRef(currentIndex);
@@ -222,7 +245,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     if (!libraryReady) return;
     const known = new Set(SONG_LIBRARY.map((song) => song.id));
     setSetlistEntries((entries) => {
-      const kept = entries.filter((entry) => known.has(entry.songId));
+      const kept = entries.filter((entry) => isScriptureEntry(entry) || known.has(entry.songId));
       return kept.length === entries.length ? entries : kept;
     });
   }, [libraryReady, libraryVersion]);
@@ -230,12 +253,41 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const setlist = useMemo<SetlistItem[]>(() => {
     const items: SetlistItem[] = [];
     for (const entry of setlistEntries) {
+      if (isScriptureEntry(entry)) {
+        items.push({ kind: "scripture", entry });
+        continue;
+      }
       const song = SONG_LIBRARY.find((candidate) => candidate.id === entry.songId);
-      if (song) items.push({ entry, song });
+      if (song) items.push({ kind: "song", entry, song });
     }
     return items;
     // SONG_LIBRARY is mutated in place; libraryVersion signals those changes.
   }, [setlistEntries, libraryVersion]);
+
+  const activeScripture = useMemo(() => {
+    if (!presentingScripture || !activeEntryId) return null;
+    const item = setlist.find((candidate) => candidate.entry.id === activeEntryId);
+    return item?.kind === "scripture" ? item.entry : null;
+  }, [presentingScripture, activeEntryId, setlist]);
+
+  useEffect(() => {
+    if (!activeScripture) return;
+    const nextSlides = scriptureToSlides(activeScripture);
+    setSlides((current) => {
+      const same =
+        current.length === nextSlides.length &&
+        current.every((slide, index) => {
+          const next = nextSlides[index];
+          return (
+            slide.id === next?.id &&
+            slide.reference === next?.reference &&
+            slide.lines.join("\n") === next?.lines.join("\n")
+          );
+        });
+      return same ? current : nextSlides;
+    });
+    setCurrentIndex((index) => Math.min(index, Math.max(0, nextSlides.length - 1)));
+  }, [activeScripture]);
 
   const activeSetlistIndex = setlist.findIndex((item) => item.entry.id === activeEntryId);
 
@@ -390,8 +442,9 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const currentSlide = slides[currentIndex];
 
   /** Wire object for the output. Republished by the effect below on every change. */
-  const payload = useMemo<SlidePayload>(
-    () => ({
+  const payload = useMemo<SlidePayload>(() => {
+    const theme = currentSlide?.scriptureSlide ? songThemeId(activeScripture) : songThemeId(activeSong);
+    return {
       songTitle: activeSong?.title ?? "",
       artist: activeSong?.artist ?? "",
       ccli: activeSong?.ccli ?? "",
@@ -402,12 +455,13 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       total: slides.length,
       blackout,
       clear,
-      theme: songThemeId(activeSong),
-      customTheme: customThemeRecord(songThemeId(activeSong)),
-      titleSlide: currentSlide?.titleSlide ?? false,
-    }),
-    [activeSong, currentSlide, currentIndex, slides.length, blackout, clear, draftRevision, savedThemes],
-  );
+      theme,
+      customTheme: customThemeRecord(theme),
+      titleSlide: currentSlide?.scriptureSlide ? false : (currentSlide?.titleSlide ?? false),
+      scriptureSlide: currentSlide?.scriptureSlide ?? false,
+      reference: currentSlide?.reference,
+    };
+  }, [activeSong, activeScripture, currentSlide, currentIndex, slides.length, blackout, clear, draftRevision, savedThemes]);
 
   useEffect(() => {
     window.primaVista?.setSlide(payload);
@@ -434,6 +488,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const showSong = useCallback(
     (song: Song, position: SlidePosition = "first", options?: ShowSongOptions) => {
       flushPendingNewSong();
+      presentingScriptureRef.current = false;
+      setPresentingScripture(false);
       const fresh = SONG_LIBRARY.find((candidate) => candidate.id === song.id) ?? song;
       selectionTouchedRef.current = true;
       const songSlides = songToSlides(fresh);
@@ -441,6 +497,25 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       setActiveSong(fresh);
       setDraftState(songToDraft(fresh));
       setSlides(songSlides);
+      setCurrentIndex(nextIndex);
+      if (!options?.keepScreen) {
+        setClear(false);
+        setBlackout(false);
+      }
+    },
+    [flushPendingNewSong],
+  );
+
+  const showScripture = useCallback(
+    (entry: ScriptureSetlistEntry, position: SlidePosition = "first", options?: ShowSongOptions) => {
+      flushPendingNewSong();
+      selectionTouchedRef.current = true;
+      presentingScriptureRef.current = true;
+      setPresentingScripture(true);
+      const nextSlides = scriptureToSlides(entry);
+      const nextIndex = position === "last" ? Math.max(0, nextSlides.length - 1) : 0;
+      setActiveSong(null);
+      setSlides(nextSlides);
       setCurrentIndex(nextIndex);
       if (!options?.keepScreen) {
         setClear(false);
@@ -469,9 +544,13 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       const item = setlist.find((candidate) => candidate.entry.id === entryId);
       if (!item) return;
       setActiveEntryId(entryId);
+      if (item.kind === "scripture") {
+        showScripture(item.entry, position, options);
+        return;
+      }
       showSong(item.song, position, options);
     },
-    [setlist, showSong],
+    [setlist, showScripture, showSong],
   );
 
   const addToSetlist = useCallback((songId: string, index?: number) => {
@@ -480,6 +559,35 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       const at = index === undefined ? entries.length : Math.max(0, Math.min(entries.length, index));
       nextEntries.splice(at, 0, createEntry(songId));
       return nextEntries;
+    });
+  }, []);
+
+  const addScriptureToSetlist = useCallback(
+    (index?: number) => {
+      const entry = createScriptureEntry();
+      setSetlistEntries((entries) => {
+        const nextEntries = [...entries];
+        const at = index === undefined ? entries.length : Math.max(0, Math.min(entries.length, index));
+        nextEntries.splice(at, 0, entry);
+        return nextEntries;
+      });
+      setActiveEntryId(entry.id);
+      showScripture(entry);
+    },
+    [showScripture],
+  );
+
+  const updateScripture = useCallback((entryId: string, patch: { reference?: string; text?: string; theme?: StageThemeId }) => {
+    setSetlistEntries((entries) => {
+      const current = entries.find((entry) => entry.id === entryId);
+      if (!current || !isScriptureEntry(current)) return entries;
+      const nextEntry: ScriptureSetlistEntry = {
+        ...current,
+        reference: patch.reference ?? current.reference,
+        text: patch.text ?? current.text,
+        theme: patch.theme ?? current.theme,
+      };
+      return entries.map((entry) => (entry.id === entryId ? nextEntry : entry));
     });
   }, []);
 
@@ -512,20 +620,23 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   const prevSetlistItem = activeSetlistIndex > 0 ? setlist[activeSetlistIndex - 1] : undefined;
 
   const upcoming = useMemo<UpcomingSlide | null>(() => {
-    const theme = songThemeId(activeSong);
-    const inSong = slides[currentIndex + 1];
-    if (inSong) return { slide: inSong, theme };
+    const inPassage = slides[currentIndex + 1];
+    if (inPassage) {
+      return {
+        slide: inPassage,
+        theme: inPassage.scriptureSlide ? songThemeId(activeScripture) : songThemeId(activeSong),
+      };
+    }
     if (!nextSetlistItem) return null;
-    const first = songToSlides(nextSetlistItem.song)[0];
-    return first
-      ? { slide: first, songTitle: nextSetlistItem.song.title, theme: songThemeId(nextSetlistItem.song) }
-      : null;
-  }, [activeSong, slides, currentIndex, nextSetlistItem, savedThemes]);
+    return openingCue(nextSetlistItem);
+  }, [activeSong, activeScripture, slides, currentIndex, nextSetlistItem, savedThemes]);
 
   const adoptSong = useCallback((song: Song) => {
     pendingNewIdRef.current = song.id;
     mirroredNewIdsRef.current.add(song.id);
     selectionTouchedRef.current = true;
+    presentingScriptureRef.current = false;
+    setPresentingScripture(false);
     activeSongRef.current = song;
     const nextDraft = songToDraft(song);
     draftRef.current = nextDraft;
@@ -574,6 +685,8 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
     pendingNewIdRef.current = blank.id;
     mirroredNewIdsRef.current.add(blank.id);
     selectionTouchedRef.current = true;
+    presentingScriptureRef.current = false;
+    setPresentingScripture(false);
     activeSongRef.current = blank;
     draftRef.current = songToDraft(blank);
     setActiveEntryId(null);
@@ -604,9 +717,13 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       } catch {
         // In-memory removal still applies. The controller banner reports the failed write.
       }
-      setSetlistEntries((entries) => entries.filter((entry) => entry.songId !== id));
+      setSetlistEntries((entries) =>
+        entries.filter((entry) => isScriptureEntry(entry) || entry.songId !== id),
+      );
       if (activeSong?.id === id) {
         setActiveEntryId(null);
+        presentingScriptureRef.current = false;
+        setPresentingScripture(false);
         const fallback = SONG_LIBRARY[0] ?? null;
         setActiveSong(fallback);
         setDraftState(fallback ? songToDraft(fallback) : EMPTY_DRAFT);
@@ -621,6 +738,10 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
   );
 
   const setSongTheme = useCallback((theme: StageThemeId) => {
+    if (activeScripture) {
+      updateScripture(activeScripture.id, { theme });
+      return;
+    }
     if (!activeSong) return;
     const next = { ...activeSong, theme };
     setActiveSong(next);
@@ -632,7 +753,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
         setLibraryVersion((version) => version + 1);
       }),
     );
-  }, [activeSong]);
+  }, [activeSong, activeScripture, updateScripture]);
 
   const addCustomTheme = useCallback(
     async (theme: CustomThemeRecord) => {
@@ -675,6 +796,7 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
    * stays on the previous slide id when that id still exists.
    */
   const applyEditor = useCallback(async () => {
+    if (presentingScriptureRef.current) return;
     if (updatingSlidesTimerRef.current !== null) {
       window.clearTimeout(updatingSlidesTimerRef.current);
       updatingSlidesTimerRef.current = null;
@@ -772,8 +894,12 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       presentationFullscreen,
       setlist,
       activeEntryId,
+      activeScripture,
+      presentingScripture,
       upcoming,
       addToSetlist,
+      addScriptureToSetlist,
+      updateScripture,
       removeFromSetlist,
       moveSetlistEntry,
       clearSetlist,
@@ -814,8 +940,12 @@ export function PresentationProvider({ children }: { children: ReactNode }) {
       presentationFullscreen,
       setlist,
       activeEntryId,
+      activeScripture,
+      presentingScripture,
       upcoming,
       addToSetlist,
+      addScriptureToSetlist,
+      updateScripture,
       removeFromSetlist,
       moveSetlistEntry,
       clearSetlist,

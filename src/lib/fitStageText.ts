@@ -45,3 +45,25 @@ export function stageFontCapPx(boxHeight: number, lineCount: number, lineHeight:
 }
 
 export { MIN_FONT_PX };
+
+/**
+ * Scripture always uses the full stage width.
+ *
+ * A narrow column grows the type until each line is a single word. A full-width
+ * line keeps a short reading as a phrase across the window. Longer readings
+ * still fit one slide by using more words on each of those full-width lines.
+ */
+export function scriptureMeasure(): string {
+  return "100%";
+}
+
+/**
+ * How many lines a passage may use before the type stops growing.
+ * Short readings stay on one line across the stage. Longer readings may wrap,
+ * and the fitter still shrinks the type if that wrap does not fit the height.
+ */
+export function scriptureLineBudget(text: string): number {
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  if (words <= 16) return 1;
+  return Math.min(16, Math.max(2, Math.ceil(words / 11)));
+}

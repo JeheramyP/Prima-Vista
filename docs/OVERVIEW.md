@@ -30,7 +30,7 @@ preload.ts  →  ipc "slide:update"
 electron/main.ts  stores lastSlide, forwards it
         │
         ▼
-PresentationView  paints lyrics, title, blackout, or clear
+PresentationView  paints lyrics, a title, a scripture reading, blackout, or clear
 ```
 
 The main process keeps the latest payload even when the output window is closed. Opening the output replays that payload after the page loads, so the stage does not flash empty.
@@ -41,7 +41,7 @@ The output never looks up songs or themes on its own. A custom or edited built-i
 
 The controller is three columns:
 
-1. **Setlist.** An ordered run of songs for this gathering. The same song can appear more than once. Drag a library row in, reorder rows, or remove them. Advancing past the last slide of a song moves to the next setlist song. Stepping back from the first slide moves to the previous song's last slide.
+1. **Setlist.** An ordered run of songs for this gathering, with scripture readings placed among them. The same song can appear more than once. Drag a library row in, add a scripture row with **+ Scripture**, reorder rows, or remove them. Advancing past the last slide of a song moves to the next setlist row. Stepping back from the first slide moves to the previous row's last slide. A scripture reading is a single slide.
 2. **Library.** Search by title, artist, or lyric line. A fresh install starts with an empty library. Songs you add are saved on this computer.
 3. **Stage.** Current and next preview, theme picker, then either the slide grid or the lyric editor.
 
@@ -60,13 +60,15 @@ Verse, chorus, and "other" sections always show a number (`Chorus 2`). Other kin
 
 The section editor edits a draft. **Update slides** (or Ctrl/Cmd+Enter) writes that draft into the library, rebuilds slides, and tries to stay on the same slide. A brand-new song is different: its draft is mirrored into the library as you type, so the title card and the song list update before you press Update slides.
 
+A scripture reading is not a song. **+ Scripture** appends a setlist row with a reference, a passage, and an optional theme. The passage is derived into one slide: line breaks become spaces, the stage wraps the words to the full width, and the reference is painted under the verse rather than as a lyric line. A short passage stays one line across the slide. A longer passage uses more words on each line so the reading still fits. The passage editor writes the setlist row as you type. Ctrl/Cmd+Enter does not save a song while that reading is live.
+
 ## Where data lives
 
 | Data | Location | Notes |
 | --- | --- | --- |
 | Song library | `song-library.json` in Electron `userData` | Whole file replaced on each save. A fresh install writes an empty library. |
 | Custom themes and built-in edits | `custom-themes.json` in the same folder | Built-in theme ids that appear here are edits of Sanctuary, Midnight, and the rest. Other ids are user-made themes. |
-| Setlist | `localStorage` key `prima-vista-setlist` | Stays on this machine's controller profile. It is not inside the song file. Songs deleted from the library are dropped from the setlist after the library loads. |
+| Setlist | `localStorage` key `prima-vista-setlist` | Stays on this machine's controller profile. It is not inside the song file. Song rows are `{ id, songId }`. Scripture rows also store the reference, passage, and an optional theme. Songs deleted from the library are dropped after the library loads. Scripture rows stay. |
 
 On Linux, `userData` is typically `~/.config/prima-vista/`. macOS uses `~/Library/Application Support/prima-vista/`. Windows uses `%APPDATA%\prima-vista\`.
 
@@ -76,7 +78,7 @@ If the page is opened without Electron, songs and themes fall back to `localStor
 
 ## Themes
 
-Ten built-in looks ship in `src/lib/stageThemes.ts`: Sanctuary, Midnight, Parchment, Cathedral, Daylight, High Contrast, Pine, Ember, Washed, and Blood. A song with no theme uses Sanctuary.
+Ten built-in looks ship in `src/lib/stageThemes.ts`: Sanctuary, Midnight, Parchment, Cathedral, Daylight, High Contrast, Pine, Ember, Washed, and Blood. A song with no theme uses Sanctuary. A scripture row stores its own theme the same way; a missing theme is also Sanctuary. The output still receives that theme on the slide payload, including a custom theme record when the look is not a built-in.
 
 Custom themes store a fill (`solid`, `linear`, `radial`, or `glow`), up to three hex colors, and a gradient angle. Text color is chosen from the background's luminance. Editing a built-in theme stores an override with that theme's id and keeps the original typeface. **Reset built-in themes** removes those overrides and leaves user-made themes alone. Deleting a custom theme sends songs that used it back to Sanctuary.
 

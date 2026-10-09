@@ -13,6 +13,7 @@ import { subscribeLibrarySaveError } from "../lib/songs";
 import ThemePicker from "../components/ThemePicker";
 import LyricEditor from "../components/LyricEditor";
 import SearchBar from "../components/SearchBar";
+import ScriptureEditor from "../components/ScriptureEditor";
 import SetlistPanel from "../components/SetlistPanel";
 import SlideGrid from "../components/SlideGrid";
 import SongList from "../components/SongList";
@@ -30,6 +31,8 @@ export default function ControllerView() {
     applyEditor,
     blackout,
     clear,
+    presentingScripture,
+    activeScripture,
   } = usePresentation();
   const [tab, setTab] = useState<"overview" | "editor">("overview");
   const [librarySaveError, setLibrarySaveError] = useState<string | null>(null);
@@ -134,20 +137,31 @@ export default function ControllerView() {
         <main className="flex min-h-0 flex-col gap-4 overflow-hidden p-4">
           <ThemePicker />
           <DualPreview />
-          <div className="flex items-center gap-2">
-            <TabButton active={tab === "overview"} onClick={() => setTab("overview")}>
-              Slides
-            </TabButton>
-            <TabButton active={tab === "editor"} onClick={() => setTab("editor")}>
-              Editor
-            </TabButton>
-            <p className="ml-auto hidden text-[12px] text-stone-500 sm:block">
-              Space / arrows change slides · B blackout · C clear
-            </p>
-          </div>
-          <div className="min-h-0 flex-1 overflow-auto">
-            {tab === "overview" ? <SlideGrid /> : <LyricEditor />}
-          </div>
+          {presentingScripture ? (
+            <>
+              {activeScripture ? <ScriptureEditor /> : null}
+              <div className="min-h-0 flex-1 overflow-auto">
+                <SlideGrid />
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                <TabButton active={tab === "overview"} onClick={() => setTab("overview")}>
+                  Slides
+                </TabButton>
+                <TabButton active={tab === "editor"} onClick={() => setTab("editor")}>
+                  Editor
+                </TabButton>
+                <p className="ml-auto hidden text-[12px] text-stone-500 sm:block">
+                  Space / arrows change slides · B blackout · C clear
+                </p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto">
+                {tab === "overview" ? <SlideGrid /> : <LyricEditor />}
+              </div>
+            </>
+          )}
         </main>
       </div>
     </div>

@@ -22,7 +22,7 @@ Click **Open output** in the controller header.
 - **Fullscreen output** fills the display the output is on. **Exit fullscreen**, the Escape key, or a double-click on the output's top edge returns it to a movable window.
 - **Close output** hides the stage. The controller keeps your place.
 
-The header shows the song title, artist, and slide number (`Slide 3 of 12`).
+The header shows the song title, artist, and slide number (`Slide 3 of 12`). A scripture reading shows its reference instead, or "Scripture" while the reference is still empty.
 
 ## Move through the service
 
@@ -44,27 +44,41 @@ You can also use **Previous** and **Next** in the header, or click any tile in t
 - **Blackout** turns the output solid black, including the background. Use it between songs or when the screen should go dark.
 - **Clear** removes the words and leaves the song background up. Use it when the band is playing and the screen should stay in the song's color.
 
-Turning one on turns the other off. Both stay on when you advance from one setlist song into the next. Picking a different song from the library turns them off.
+Turning one on turns the other off. Both stay on when you advance from one setlist row into the next, including a scripture reading. Picking a different song from the library turns them off.
 
 ### What the previews mean
 
 **Current slide** matches the output, including blackout and clear.
 
-**Next slide** is the following cue in this song. On the last slide, if another song is queued in the setlist, the card becomes **Next song** and shows that song's title slide in its own theme. The next card is dimmed so it does not compete with the live cue.
+**Next slide** is the following cue in this song. On the last slide, if another row is queued, a song shows as **Next song** (that song's title slide, in its own theme) and a scripture reading stays **Next slide**. The next card is dimmed so it does not compete with the live cue.
 
 ## Setlist
 
 The left column is the order of the gathering.
 
 - Drag a song from the library onto the setlist, or drop it between rows. The highlight shows where it will land.
+- **+ Scripture** adds a reading at the end of the list and makes it live. Drag that row to the place it should be read.
 - Drag a setlist row by its handle to reorder it.
-- Click a row to make that song live, starting at its title slide.
-- Remove one row, or **Clear** the whole list. Clearing asks for confirmation.
+- Click a song row to make that song live, starting at its title slide. Click a scripture row to present that reading.
+- Remove one row, or **Clear** the whole list. Clearing asks for confirmation and removes songs and scripture rows together.
 - The same song can be on the setlist twice. Each row is its own cue, so editing the song updates both.
 
 The setlist is remembered on this computer. It is separate from the song library. If a song is deleted, its setlist rows disappear the next time the library finishes loading.
 
-At the end of a song, **Next** walks into the following setlist song. At the start of a song, **Previous** walks back to the last slide of the previous setlist song.
+At the end of a song, **Next** walks into the following setlist row, whether that row is a song or a scripture reading. At the start of a song, **Previous** walks back to the last slide of the previous row. A scripture reading is one slide, so **Next** leaves it for the following row.
+
+## Scripture slides
+
+A scripture row is a reading for this gathering. It is stored on the setlist, not in the song library. Deleting a song does not remove it.
+
+While the reading is live, the song editor is replaced by two fields:
+
+- **Reference** is the citation, such as John 3:16. It is painted under the verse, and it is the heading in the controller.
+- **Passage** is the verse. The whole passage stays on one slide. Line breaks in the field are kept as spaces, and the stage reflows the words. A short reading runs across the slide as one line. A longer reading wraps, with more words on each line, so the passage still fits.
+
+The theme row is labeled **Slide theme** while a reading is live. The choice is saved on that setlist row and paints the preview and the output. A new reading starts on Sanctuary. Changing it does not change any song.
+
+Ctrl/Cmd+Enter does nothing while a reading is on screen, so it cannot write the song that was open before.
 
 ## Library and search
 
@@ -80,7 +94,7 @@ The first time Prima Vista runs, the library is empty. Songs you add are saved o
 
 ## Themes
 
-The theme row above the previews is the look of the **selected song**. Choosing a theme saves it on that song immediately and updates the output if the song is live.
+The theme row above the previews is the look of the **selected song**. Choosing a theme saves it on that song immediately and updates the output if the song is live. While a scripture reading is on screen, the row is labeled **Slide theme** and the choice is saved on that reading instead. A reading with no theme yet uses Sanctuary.
 
 Built-in themes:
 

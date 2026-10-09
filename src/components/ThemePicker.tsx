@@ -23,6 +23,7 @@ import CustomThemeEditor from "./CustomThemeEditor";
 export default function ThemePicker() {
   const {
     activeSong,
+    activeScripture,
     setSongTheme,
     customThemes,
     defaultOverrides,
@@ -30,7 +31,8 @@ export default function ThemePicker() {
     deleteCustomTheme,
     resetDefaultThemes,
   } = usePresentation();
-  const theme = stageThemeById(songThemeId(activeSong));
+  const theme = stageThemeById(songThemeId(activeScripture ?? activeSong));
+  const canChooseTheme = Boolean(activeSong || activeScripture);
   const [editor, setEditor] = useState<{ kind: "create" } | { kind: "edit"; record: CustomThemeRecord } | null>(
     null,
   );
@@ -82,7 +84,7 @@ export default function ThemePicker() {
         role="radio"
         aria-checked={selected}
         title={item.blurb}
-        disabled={!activeSong}
+        disabled={!canChooseTheme}
         onClick={() => setSongTheme(item.id)}
         className={`flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${
           selected
@@ -105,7 +107,7 @@ export default function ThemePicker() {
     <div ref={anchorRef} className="relative">
       <div className="mb-2 flex items-center justify-between gap-3">
         <span className="text-[12px] font-semibold uppercase tracking-[0.22em] text-stone-500">
-          Song theme
+          {activeScripture ? "Slide theme" : "Song theme"}
         </span>
         <button
           type="button"
@@ -127,7 +129,7 @@ export default function ThemePicker() {
       </div>
       <div
         role="radiogroup"
-        aria-label="Theme for the selected song"
+        aria-label={activeScripture ? "Theme for the scripture slide" : "Theme for the selected song"}
         className="flex max-h-[min(16rem,40vh)] flex-wrap items-center gap-1.5 overflow-y-auto overscroll-contain px-1 pb-1 pt-2"
       >
         {STAGE_THEMES.map((item) => {

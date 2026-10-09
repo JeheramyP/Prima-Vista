@@ -106,6 +106,27 @@ export function songToSlides(song: Song): Slide[] {
   return [titleSlideForSong(song), ...sectionsToSlides(sections)];
 }
 
+/** The whole passage on one slide. The stage wraps it; the reference is not a line. */
+export function scriptureToSlides(passage: { id: string; reference: string; text: string }): Slide[] {
+  const reference = passage.reference.trim();
+  const text = passage.text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join(" ");
+  return [
+    {
+      id: `${passage.id}:scripture`,
+      sectionId: passage.id,
+      sectionLabel: "Scripture",
+      kind: "other",
+      lines: text ? [text] : [],
+      scriptureSlide: true,
+      reference: reference || undefined,
+    },
+  ];
+}
+
 function chunkLines(lines: string[], size: number): string[][] {
   if (!lines?.length) return [[]];
   const chunks: string[][] = [];

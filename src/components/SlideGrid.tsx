@@ -39,9 +39,11 @@ export default function SlideGrid() {
               <div className="mb-2 flex items-center justify-between gap-2">
                 <span
                   className={`rounded-full border px-2 py-0.5 text-[11px] font-medium uppercase tracking-wide ${
-                    slide.titleSlide
-                      ? "border-gold-500/30 bg-gold-500/20 text-gold-200"
-                      : kindTone(slide.kind)
+                    slide.scriptureSlide
+                      ? "border-sky-400/30 bg-sky-500/15 text-sky-100"
+                      : slide.titleSlide
+                        ? "border-gold-500/30 bg-gold-500/20 text-gold-200"
+                        : kindTone(slide.kind)
                   }`}
                 >
                   {slide.sectionLabel}
@@ -63,9 +65,14 @@ export default function SlideGrid() {
                   ) : null}
                 </div>
               ) : (
-                <p className="min-h-[3.2rem] whitespace-pre-line text-sm leading-snug text-stone-200">
-                  {slide.lines.join("\n")}
-                </p>
+                <div className="min-h-[3.2rem]">
+                  <p className="whitespace-pre-line text-sm leading-snug text-stone-200">
+                    {slide.lines.join("\n")}
+                  </p>
+                  {slide.scriptureSlide && slide.reference ? (
+                    <p className="mt-2 text-right text-[12px] leading-snug text-stone-400">{slide.reference}</p>
+                  ) : null}
+                </div>
               )}
             </button>
           );

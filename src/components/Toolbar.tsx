@@ -38,6 +38,8 @@ function ControlButton({
 export default function Toolbar() {
   const {
     activeSong,
+    activeScripture,
+    presentingScripture,
     currentIndex,
     slides,
     blackout,
@@ -58,10 +60,12 @@ export default function Toolbar() {
       <div>
         <p className="text-[12px] uppercase tracking-[0.28em] text-gold-400">Prima Vista</p>
         <h1 className="font-display text-xl text-stone-50">
-          {activeSong?.title ?? "No song selected"}
+          {presentingScripture
+            ? activeScripture?.reference.trim() || "Scripture"
+            : activeSong?.title ?? "No song selected"}
         </h1>
         <p className="text-xs text-stone-500">
-          {activeSong?.artist}
+          {presentingScripture ? "Scripture" : activeSong?.artist}
           {slides.length
             ? ` · Slide ${Math.min(currentIndex + 1, slides.length)} of ${slides.length}`
             : ""}

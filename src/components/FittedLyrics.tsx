@@ -7,7 +7,13 @@
  * and the controller preview.
  */
 import { useLayoutEffect, useRef, useState } from "react";
-import { largestSizeThatFits, MIN_FONT_PX, stageFontCapPx } from "../lib/fitStageText";
+import {
+  largestSizeThatFits,
+  MIN_FONT_PX,
+  scriptureLineBudget,
+  scriptureMeasure,
+  stageFontCapPx,
+} from "../lib/fitStageText";
 import { titleSlideFooter } from "../lib/slides";
 import { stageLyricStyle, stageMutedColor, type StageTheme } from "../lib/stageThemes";
 
@@ -23,6 +29,13 @@ type FittedLyricsProps = {
   wrap?: boolean;
   /** CSS max width used when wrapping, such as `14ch`. */
   maxWidth?: string;
+  /** Even out wrapped line lengths. Used for a scripture passage. */
+  balance?: boolean;
+  /**
+   * Most wrapped lines this block may use while the type is still growing.
+   * Scripture sets this so a short passage stays one line across the stage.
+   */
+  maxLines?: number;
   align?: "center" | "left" | "right";
   color?: string;
   fontWeight?: number;
@@ -38,6 +51,8 @@ export default function FittedLyrics({
   theme,
   wrap = false,
   maxWidth,
+  balance = false,
+  maxLines = 0,
   align = "center",
   color,
   fontWeight,
@@ -66,16 +81,42 @@ export default function FittedLyrics({
       const limitH = maxH - 1;
       const renderedCap = stageFontCapPx(maxH, wrap ? 1 : lines.length, theme.lineHeight, maxHeightRatio);
       const maxPx = Math.max(MIN_FONT_PX, renderedCap / scale);
-      const fits = (px: number) => {
+      const wrappedLines = () => {
+        // Count line boxes of the text itself. A range over the element also
+        // returns the block box, which would look like a second line.
+        const walker = document.createTreeWalker(text, NodeFilter.SHOW_TEXT);
+        let count = 0;
+        let node = walker.nextNode();
+        while (node) {
+          const range = document.createRange();
+          range.selectNodeContents(node);
+          for (const rect of range.getClientRects()) {
+            if (rect.width > 1 && rect.height > 1) count += 1;
+          }
+          node = walker.nextNode();
+        }
+        return count;
+      };
+      const fits = (px: number, lineBudget: number) => {
         text.style.fontSize = `${px * scale}px`;
-        return text.scrollWidth <= limitW && text.scrollHeight <= limitH;
+        if (!balance) return text.scrollWidth <= limitW && text.scrollHeight <= limitH;
+        const widthOk = text.scrollWidth <= text.clientWidth + 1;
+        const heightOk = text.scrollHeight <= limitH;
+        if (!widthOk || !heightOk) return false;
+        return lineBudget <= 0 || wrappedLines() <= lineBudget;
       };
 
-      let next = largestSizeThatFits(fits, MIN_FONT_PX, maxPx);
+      const wordCount = lines.join(" ").trim().split(/\s+/).filter(Boolean).length;
+      let lineBudget = balance ? Math.max(1, maxLines) : 0;
+      if (balance && wordCount > lineBudget && !fits(MIN_FONT_PX, lineBudget)) {
+        while (lineBudget < wordCount && !fits(MIN_FONT_PX, lineBudget)) lineBudget += 1;
+      }
+
+      let next = largestSizeThatFits((px) => fits(px, lineBudget), MIN_FONT_PX, maxPx);
       // Glyph widths can settle after the search (web fonts, optical size). Step down
       // against the layout we just forced so a long line cannot sit past the stage.
       let guard = 0;
-      while (next > MIN_FONT_PX && !fits(next) && guard < 48) {
+      while (next > MIN_FONT_PX && !fits(next, lineBudget) && guard < 48) {
         next -= 1;
         guard += 1;
       }
@@ -115,7 +156,7 @@ export default function FittedLyrics({
       observer.disconnect();
       fonts?.removeEventListener("loadingdone", onFonts);
     };
-  }, [align, lineKey, lines.length, maxHeightRatio, maxWidth, theme, wrap]);
+  }, [align, balance, lineKey, lines.length, maxHeightRatio, maxLines, maxWidth, theme, wrap]);
 
   const placed =
     align === "right"
@@ -125,7 +166,9 @@ export default function FittedLyrics({
         : "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-center";
   // `w-max` keeps scrollWidth equal to the glyphs. A full-width box is always
   // one pixel over the fitter's limit, so wrapped credits would stay at 1px.
-  const widthClass = "w-max max-w-full";
+  // A balanced passage uses a real line width instead, so the fitter measures
+  // the wrapped height rather than one unwrapped line.
+  const widthClass = balance ? "max-w-full" : "w-max max-w-full";
 
   return (
     <div ref={boxRef} className="relative h-full w-full min-h-0 min-w-0">
@@ -136,7 +179,11 @@ export default function FittedLyrics({
           ...stageLyricStyle(theme, fontSizePx),
           ...(color ? { color } : {}),
           ...(fontWeight != null ? { fontWeight } : {}),
-          ...(wrap ? { maxWidth: maxWidth ? `min(${maxWidth}, 100%)` : "100%" } : {}),
+          ...(wrap
+            ? balance
+              ? { width: maxWidth ?? "100%", maxWidth: "100%", textWrap: "pretty" as const }
+              : { maxWidth: maxWidth ? `min(${maxWidth}, 100%)` : "100%", textWrap: "wrap" as const }
+            : {}),
         }}
       >
         {lines.map((line, index) => (
@@ -208,6 +255,51 @@ export function StageTitle({
             color={stageMutedColor(theme)}
             fontWeight={400}
             maxHeightRatio={0.82}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Verse centered, citation along the bottom. Shared by the output and the preview. */
+export function StageScripture({
+  lines,
+  reference,
+  theme,
+}: {
+  lines: string[];
+  reference?: string;
+  theme: StageTheme;
+}) {
+  const verse = lines.map((line) => line.trim()).filter((line) => line.length > 0);
+  const cite = reference?.trim() ?? "";
+  if (!verse.length && !cite) return null;
+
+  return (
+    <div className={`${TITLE_STAGE_INSET} flex flex-col`}>
+      <div className="relative min-h-0 flex-1">
+        {verse.length ? (
+          <FittedLyrics
+            lines={verse}
+            theme={theme}
+            wrap
+            balance
+            maxWidth={scriptureMeasure()}
+            maxLines={scriptureLineBudget(verse.join(" "))}
+            maxHeightRatio={0.32}
+          />
+        ) : null}
+      </div>
+      {cite ? (
+        <div className="mt-[2%] h-[11%] shrink-0">
+          <FittedLyrics
+            lines={[cite]}
+            theme={theme}
+            align="center"
+            color={stageMutedColor(theme)}
+            fontWeight={400}
+            maxHeightRatio={0.85}
           />
         </div>
       ) : null}
