@@ -11,6 +11,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
+import { slideShortcutAction } from "../src/lib/slideKeys";
 import { writeJsonAtomic } from "./writeJsonAtomic";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -228,11 +229,34 @@ function createPresentationWindow() {
   presentationWindow.on("leave-full-screen", () => sendFullscreen(false));
 
   presentationWindow.webContents.on("before-input-event", (event, input) => {
-    if (input.type !== "keyDown" || input.key !== "Escape" || input.isAutoRepeat) return;
-    const win = presentationWindow;
-    if (!win || win.isDestroyed() || (!win.isFullScreen() && !win.isMaximized())) return;
+    if (input.type !== "keyDown") return;
+
+    // Leave fullscreen from the output itself. The page may be a black frame
+    // with nothing focused, so this cannot live in a renderer listener.
+    if (input.key === "Escape") {
+      if (input.isAutoRepeat) return;
+      const win = presentationWindow;
+      if (!win || win.isDestroyed() || (!win.isFullScreen() && !win.isMaximized())) return;
+      event.preventDefault();
+      restorePresentationWindow();
+      return;
+    }
+
+    // Slide keys are applied in the controller. This window would otherwise
+    // drop them, and on one display a click to drag the output is enough to
+    // focus it and strand the keyboard.
+    if (input.control || input.meta || input.alt) return;
+    if (!slideShortcutAction({ key: input.key, code: input.code, repeat: input.isAutoRepeat })) {
+      return;
+    }
+    const controller = controllerWindow;
+    if (!controller || controller.isDestroyed()) return;
     event.preventDefault();
-    restorePresentationWindow();
+    controller.webContents.send("presentation:shortcut", {
+      key: input.key,
+      code: input.code,
+      repeat: input.isAutoRepeat,
+    });
   });
 
   presentationWindow.on("closed", () => {

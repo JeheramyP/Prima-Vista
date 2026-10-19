@@ -35,7 +35,7 @@ The header shows the song title, artist, and slide number (`Slide 3 of 12`). A s
 | C | Toggle clear |
 | Ctrl+Enter or Cmd+Enter | Update slides from the editor, even while a text field is focused |
 
-Shortcuts are ignored while you are typing in a text field, except Ctrl/Cmd+Enter. They are also ignored when a button has focus and you press Enter, so confirming a dialog does not also advance the slide.
+Shortcuts are ignored while you are typing in a text field, except Ctrl/Cmd+Enter. They are also ignored when a button has focus and you press Enter, so confirming a dialog does not also advance the slide. Slide keys still work while the output window is focused, including after you click it to drag it on a single display. Escape on the output leaves fullscreen instead of changing slides.
 
 You can also use **Previous** and **Next** in the header, or click any tile in the **Slides** grid.
 

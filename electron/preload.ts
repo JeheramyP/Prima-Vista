@@ -56,6 +56,16 @@ contextBridge.exposeInMainWorld("primaVista", {
     ipcRenderer.on("presentation:fullscreen", listener);
     return () => ipcRenderer.removeListener("presentation:fullscreen", listener);
   },
+  onPresentationShortcut: (
+    callback: (shortcut: { key: string; code: string; repeat: boolean }) => void,
+  ) => {
+    const listener = (
+      _event: unknown,
+      shortcut: { key: string; code: string; repeat: boolean },
+    ) => callback(shortcut);
+    ipcRenderer.on("presentation:shortcut", listener);
+    return () => ipcRenderer.removeListener("presentation:shortcut", listener);
+  },
   loadSongs: () => ipcRenderer.invoke("songs:load") as Promise<SongRecord[] | null>,
   saveSongs: (songs: SongRecord[]) =>
     ipcRenderer.invoke("songs:save", songs) as Promise<boolean>,

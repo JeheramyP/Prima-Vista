@@ -49,8 +49,9 @@ The renderer has no Node access. Both windows use the same preload with `context
 | `themes:load` | `invoke` | Controller → main | Parsed array, or `null`. Shape is checked in the renderer. |
 | `themes:save` | `invoke` | Controller → main | Atomically replaces the theme file. Throws if the write fails. |
 | `window:focus-fix` | `send` | Renderer → main | Blur then focus the sender window. No-op on macOS. |
+| `presentation:shortcut` | `on` | Main → controller | A slide key pressed while the output window is focused. The controller runs the same action it would for a local keydown. |
 
-Escape on the output is handled in the main process (`before-input-event`), not in the page, so it still works when the page is blacked out.
+Escape on the output is handled in the main process (`before-input-event`), not in the page, so it still works when the page is blacked out. That same listener forwards every other slide key on `presentation:shortcut` and does not deliver it to the output page. The output has no slide index, so dropping the key there is what strands Space, the arrows, Home, End, B, and C after a click on the output — including a drag on a single display.
 
 Initial `lastSlide` is blacked out with empty lines. The controller overwrites it as soon as `PresentationProvider` mounts.
 
@@ -265,3 +266,4 @@ Keep filesystem and window work in the main process. The preload should only for
 - Sending a slide that omits `customTheme` for a user theme. The output will fall through to Sanctuary.
 - Changing slide id format without updating `applyEditor`'s match on the previous id. The live index will jump.
 - Calling `window.confirm` instead of `confirmDialog`.
+- Handling a slide key only in the controller's `keydown` listener. The output is a second focused window; those keys have to go through `before-input-event` and `presentation:shortcut`.

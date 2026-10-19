@@ -4,9 +4,11 @@
  * Three columns: setlist, library search, then theme, previews, and either
  * the slide grid or the lyric editor. The whole stage column scrolls as one
  * panel, so the theme row and previews move with whichever pane is below
- * them. Keyboard shortcuts are registered here
- * so they apply across those panes, and they skip events while a field is
- * being typed in. Ctrl/Cmd+Enter still runs Update slides from a field.
+ * them. Keyboard shortcuts are registered here so they apply across those
+ * panes, and they skip events while a field is being typed in. The same
+ * slide keys are applied when the output window has focus: that window
+ * forwards them because it does not own the slide index. Ctrl/Cmd+Enter
+ * still runs Update slides from a field, and only from this window.
  */
 import { useEffect, useState, type ReactNode } from "react";
 import DualPreview from "../components/DualPreview";
@@ -20,6 +22,7 @@ import SetlistPanel from "../components/SetlistPanel";
 import SlideGrid from "../components/SlideGrid";
 import SongList from "../components/SongList";
 import Toolbar from "../components/Toolbar";
+import { slideShortcutAction, type SlideShortcut } from "../lib/slideKeys";
 import { usePresentation } from "../state/PresentationContext";
 
 export default function ControllerView() {
@@ -62,58 +65,37 @@ export default function ControllerView() {
       if (target?.tagName === "BUTTON" && event.key === "Enter") return;
 
       if (event.ctrlKey || event.metaKey || event.altKey) return;
+      // A repeated Space or arrow is still a hit, so the page does not scroll.
+      if (runSlideShortcut(event)) event.preventDefault();
+    };
 
-      // Holding these keys must not retrigger. Space and arrows still need
-      // preventDefault so the page does not scroll on the repeated events.
-      const ignoreRepeat =
-        event.code === "Space" ||
-        event.key === "ArrowLeft" ||
-        event.key === "ArrowRight" ||
-        event.key === "ArrowUp" ||
-        event.key === "ArrowDown" ||
-        event.key.toLowerCase() === "b" ||
-        event.key.toLowerCase() === "c";
-      if (event.repeat && ignoreRepeat) {
-        event.preventDefault();
-        return;
-      }
-
-      if (
-        event.code === "Space" ||
-        event.key === "ArrowRight" ||
-        event.key === "ArrowDown" ||
-        event.key === "PageDown"
-      ) {
-        event.preventDefault();
-        next();
-      } else if (
-        event.key === "ArrowLeft" ||
-        event.key === "ArrowUp" ||
-        event.key === "PageUp" ||
-        event.key === "Backspace"
-      ) {
-        event.preventDefault();
-        prev();
-      } else if (event.key === "Home") {
-        event.preventDefault();
-        goTo(0);
-      } else if (event.key === "End") {
-        event.preventDefault();
-        goTo(slides.length - 1);
-      } else if (event.key.toLowerCase() === "b") {
-        event.preventDefault();
-        setBlackout(!blackout);
-        setClear(false);
-      } else if (event.key.toLowerCase() === "c") {
-        event.preventDefault();
-        setClear(!clear);
-        setBlackout(false);
-      }
+    const onForwarded = (shortcut: SlideShortcut) => {
+      runSlideShortcut(shortcut);
     };
 
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const unsubscribe = window.primaVista?.onPresentationShortcut(onForwarded);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      unsubscribe?.();
+    };
   }, [applyEditor, blackout, clear, goTo, next, prev, setBlackout, setClear, slides.length]);
+
+  function runSlideShortcut(input: { key: string; code: string; repeat?: boolean }) {
+    const action = slideShortcutAction(input);
+    if (action === "next") next();
+    else if (action === "prev") prev();
+    else if (action === "first") goTo(0);
+    else if (action === "last") goTo(slides.length - 1);
+    else if (action === "blackout") {
+      setBlackout(!blackout);
+      setClear(false);
+    } else if (action === "clear") {
+      setClear(!clear);
+      setBlackout(false);
+    }
+    return action !== null;
+  }
 
   return (
     <div className="flex h-full flex-col bg-sanctuary-950 text-stone-100">

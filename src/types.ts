@@ -6,6 +6,7 @@
  * the controller sends and the output paints. `PrimaVistaAPI` is the preload
  * bridge on `window.primaVista`.
  */
+import type { SlideShortcut } from "./lib/slideKeys";
 import type { CustomThemeRecord, StageThemeId } from "./lib/stageThemes";
 
 export type SectionKind =
@@ -127,6 +128,8 @@ export type PrimaVistaAPI = {
   onSlideUpdate: (callback: (payload: SlidePayload) => void) => () => void;
   onPresentationClosed: (callback: () => void) => () => void;
   onPresentationFullscreen: (callback: (fullscreen: boolean) => void) => () => void;
+  /** Slide key pressed while the output window was focused. */
+  onPresentationShortcut: (callback: (shortcut: SlideShortcut) => void) => () => void;
   loadSongs: () => Promise<Song[] | null>;
   saveSongs: (songs: Song[]) => Promise<boolean>;
   loadThemes: () => Promise<CustomThemeRecord[] | null>;
