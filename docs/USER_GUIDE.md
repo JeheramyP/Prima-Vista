@@ -19,7 +19,7 @@ Click **Open output** in the controller header.
 
 - With a second display connected, the output fills that display.
 - With one display, a separate window opens. Drag it onto the projector. The top edge of the output is the drag handle.
-- **Fullscreen output** fills the display the output is on. **Exit fullscreen**, the Escape key, or a double-click on the output's top edge returns it to a movable window.
+- **Fullscreen output** fills the display the output is on. **Exit fullscreen**, the Escape key, or a double-click on the output's top edge returns it to a movable window. Double-clicking the top edge of a movable output makes it fullscreen again.
 - **Close output** hides the stage. The controller keeps your place.
 
 The header shows the song title, artist, and slide number (`Slide 3 of 12`). A scripture reading shows its reference instead, or "Scripture" while the reference is still empty.

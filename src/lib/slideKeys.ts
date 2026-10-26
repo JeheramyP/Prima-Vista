@@ -3,8 +3,8 @@
  *
  * The controller applies these while it is focused. The output window has no
  * slide state, so the main process recognizes the same keys and forwards them.
- * Holding Space, the arrows, B, or C must not repeat; Page Up/Down and
- * Backspace may.
+ * A held slide key must not repeat, so one press moves one slide. That
+ * includes Space, the arrows, Page Up/Down, Backspace, Home, End, B, and C.
  */
 
 export type SlideShortcut = {
@@ -47,14 +47,6 @@ export function slideShortcutAction(input: {
 
   if (!action) return null;
 
-  const ignoreRepeat =
-    input.code === "Space" ||
-    key === "ArrowLeft" ||
-    key === "ArrowRight" ||
-    key === "ArrowUp" ||
-    key === "ArrowDown" ||
-    lower === "b" ||
-    lower === "c";
-  if (input.repeat && ignoreRepeat) return "ignore-repeat";
+  if (input.repeat) return "ignore-repeat";
   return action;
 }

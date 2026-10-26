@@ -15,7 +15,7 @@ Both windows load the same React app. Routing is a hash router (`/#/` and `/#/pr
 
 Closing the controller closes the output. Closing the output leaves the controller running and clears its "output is open" flag. On macOS, closing every window does not quit the app; activating it again opens a new controller if none exists.
 
-If a second display is connected, the output opens fullscreen on that display. Otherwise it opens as a 1280×720 window offset from the primary display so it can be dragged onto a projector. The top 32 pixels of the output are a drag region. Escape, or a double-click on that strip, leaves fullscreen. The window is frameless, so those are the exits.
+If a second display is connected, the output opens fullscreen on that display. Otherwise it opens as a 1280×720 window offset from the primary display so it can be dragged onto a projector. The top 32 pixels of the output are a drag region. Escape, or a double-click on that strip, leaves fullscreen. Double-clicking the strip of a windowed output enters fullscreen instead of maximizing. The window is frameless, so those are the exits.
 
 ## How a slide reaches the screen
 

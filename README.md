@@ -38,7 +38,7 @@ The controller opens first. Use **Open output** to spawn the presentation window
 | C | Clear (blank lyrics, keep background) |
 | Click a slide tile or song | Jump to that slide |
 
-The editor builds a song from sections. Drag **Verse**, **Chorus**, **Bridge**, **Instrumental**, or **Tag** into the arrangement, reorder them by the handle, and type lyrics on each card. **Update slides** applies the arrangement. Every four lyric lines become one slide.
+The editor builds a song from sections. Drag **Verse**, **Chorus**, **Bridge**, **Instrumental**, **Tag**, etc. into the arrangement, reorder them by the handle, and type lyrics on each card. **Update slides** applies the arrangement. Every four lyric lines become one slide.
 
 Switch the editor to **Copy-paste** to paste a whole song at once. Blank lines (or headers like `[Verse 1]`) split the lyrics into blocks. Drag blocks into the roadmap on the right in the order they are sung: each block takes the next pasted paragraph, including a repeated Chorus 1. Every section has a number picker (Chorus 1, Chorus 2, and so on) in both editors, and that label carries through to the slides.
 

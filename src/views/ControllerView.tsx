@@ -65,7 +65,7 @@ export default function ControllerView() {
       if (target?.tagName === "BUTTON" && event.key === "Enter") return;
 
       if (event.ctrlKey || event.metaKey || event.altKey) return;
-      // A repeated Space or arrow is still a hit, so the page does not scroll.
+      // A repeated slide key is still a hit, so the page does not scroll.
       if (runSlideShortcut(event)) event.preventDefault();
     };
 

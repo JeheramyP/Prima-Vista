@@ -174,7 +174,8 @@ function createControllerWindow() {
 }
 
 /**
- * Output window. A second display gets a fullscreen window on that display.
+ * Output window. With a second display, the window goes fullscreen on the
+ * display the controller is not on.
  * A single display gets a smaller window offset from the primary so it can
  * be dragged onto a projector. Calling this again focuses the existing window
  * and resends the current slide.
@@ -188,17 +189,31 @@ function createPresentationWindow() {
 
   const displays = screen.getAllDisplays();
   const primary = screen.getPrimaryDisplay();
-  const external = displays.find((d) => d.id !== primary.id) ?? primary;
-  const { x, y, width, height } = external.bounds;
-
+  // The TV may be the primary display, so pick whichever display the
+  // controller is not on rather than "not primary".
+  const controllerDisplay =
+    controllerWindow && !controllerWindow.isDestroyed()
+      ? screen.getDisplayMatching(controllerWindow.getBounds())
+      : primary;
+  const external =
+    displays.find((d) => d.id !== controllerDisplay.id) ?? controllerDisplay;
   const placeOnExternal = displays.length > 1;
+  const targetBounds = placeOnExternal
+    ? external.bounds
+    : {
+        x: primary.bounds.x + 80,
+        y: primary.bounds.y + 80,
+        width: 1280,
+        height: 720,
+      };
 
+  // Fullscreen is applied after the window is shown on the target display.
+  // Passing `fullscreen: true` to the constructor lets Linux and Windows
+  // fullscreen it on whichever display the window manager picks.
   presentationWindow = new BrowserWindow({
-    x: placeOnExternal ? x : primary.bounds.x + 80,
-    y: placeOnExternal ? y : primary.bounds.y + 80,
-    width: placeOnExternal ? width : 1280,
-    height: placeOnExternal ? height : 720,
-    fullscreen: placeOnExternal,
+    ...targetBounds,
+    show: false,
+    fullscreen: false,
     frame: false,
     transparent: false,
     backgroundColor: "#000000",
@@ -224,6 +239,37 @@ function createPresentationWindow() {
   const sendFullscreen = (fullscreen: boolean) => {
     controllerWindow?.webContents.send("presentation:fullscreen", fullscreen);
   };
+
+  presentationWindow.once("ready-to-show", () => {
+    const win = presentationWindow;
+    if (!win || win.isDestroyed()) return;
+    // Set twice: moving between displays with different scale factors
+    // resizes the window using the old display's scale on Windows.
+    win.setBounds(targetBounds);
+    win.setBounds(targetBounds);
+    win.show();
+    if (!placeOnExternal) return;
+    // The window manager may still be mapping the window, so fullscreen
+    // on the next tick once it sits on the target display.
+    setTimeout(() => {
+      if (win.isDestroyed()) return;
+      win.setBounds(targetBounds);
+      win.setFullScreen(true);
+      sendFullscreen(true);
+    }, 50);
+  });
+
+  // Double-clicking the drag strip is handled by the window manager as a
+  // maximize, which leaves the taskbar visible. Turn it into fullscreen.
+  presentationWindow.on("maximize", () => {
+    const win = presentationWindow;
+    if (!win || win.isDestroyed() || win.isFullScreen()) return;
+    win.unmaximize();
+    setTimeout(() => {
+      if (win.isDestroyed()) return;
+      win.setFullScreen(true);
+    }, 0);
+  });
 
   presentationWindow.on("enter-full-screen", () => sendFullscreen(true));
   presentationWindow.on("leave-full-screen", () => sendFullscreen(false));
